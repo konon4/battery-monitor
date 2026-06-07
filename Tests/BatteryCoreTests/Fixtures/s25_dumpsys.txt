@@ -1,0 +1,81 @@
+Current Battery Service state:
+  AC powered: false
+  USB powered: true
+  Wireless powered: false
+  Dock powered: false
+  Max charging current: 0
+ Time when the latest updated value of the Max charging current was sent via battery changed broadcast: 0
+  Max charging voltage: 0
+  Charge counter: 2719850
+  status: 2
+  health: 2
+  present: true
+  level: 66
+  scale: 100
+  voltage: 4114
+ Time when the latest updated value of the voltage was sent via battery changed broadcast: 0
+ The last voltage value sent via the battery changed broadcast: 4107
+  temperature: 377
+  technology: Li-ion
+  Charging state: 0
+  Charging policy: 0
+  Capacity level: -1
+  batteryMiscEvent: 268500992
+  batteryCurrentEvent: 32768
+  mSecPlugTypeSummary: 2
+  LED Charging: true
+  LED Low Battery: true
+  current now: 1911718
+  charge counter: 2719850
+  Adaptive Fast Charging Settings: true
+  Super Fast Charging Settings: false
+FEATURE_WIRELESS_FAST_CHARGER_CONTROL: true
+  mWasUsedWirelessFastChargerPreviously: false
+  mWirelessFastChargingSettingsEnable: true
+LLB CAL: 20250514
+LLB MAN:
+LLB CURRENT: YEAR2026M6D2
+LLB DIFF: 55
+SEC_FEATURE_BATTERY_FULL_CAPACITY: true
+  mFullCapacityEnable: false
+FEATURE_HICCUP_CONTROL: true
+FEATURE_SUPPORTED_DAILY_BOARD: false
+SEC_FEATURE_BATTERY_LIFE_EXTENDER: false
+SEC_FEATURE_USE_WIRELESS_POWER_SHARING: true
+ mProtectBatteryMode: 0
+ mProtectionThreshold: 80
+ mMaximumProtectionThreshold: 80
+ mLtcHighThreshold: 95
+ mLtcHighSocDuration: 10080
+ mLtcReleaseThreshold: 75
+[Not Battery Adaptive Protect Mode]
+  FEATURE_SAVE_BATTERY_CYCLE: true
+  FEATURE_FULL_BATTERY_CYCLE: true
+  battery IcAuthenticationResults: [false]
+  battery FirstUseDate: [20250812]
+  mSavedBatteryAsoc: [96]
+  mSavedBatteryUsage: [25307]
+  mSavedFullStatusDuration: [79975]
+
+[EventLogBuffer]
+06-03 19:46:19.821  android.intent.action.ACTION_POWER_CONNECTED
+06-03 19:55:27.493  android.intent.action.ACTION_POWER_DISCONNECTED
+06-08 01:20:18.200  android.intent.action.ACTION_POWER_CONNECTED
+06-08 01:23:45.808  android.intent.action.ACTION_POWER_DISCONNECTED
+06-08 01:23:51.804  android.intent.action.ACTION_POWER_CONNECTED
+
+[BattInfoLogBuffer]
+06-02 21:07:48.172  mBatteryType:0 ,mBatteryCount:1
+06-02 21:07:51.172  Final IcAuthenticationResults:[false]
+06-02 21:07:51.173  [SS][BattInfo]QrData efsValue:GH43-05250A+AA1Y331HS+23198C
+06-02 21:07:51.173  [SS][BattInfo]FirstUseDateData efsValue:20250812
+06-02 21:07:51.173  [SS][BattInfo]AsocData efsValue:96
+06-02 21:07:51.287  [SS][BattInfo]AsocData efsValue:96
+06-02 21:07:51.287  [SS][BattInfo]DischargeLevelData efsValue:25187
+06-02 21:07:51.288  [SS][BattInfo]FullStatusUsageData efsValue:79254
+
+mBatteryChangedConditionCounts:[14, 1, 1, 225, 12, 39, 195, 0, 0, 20, 9, 0, 9, 0, 0, 10, 68, 22, 0, 0, 0, 1]
+BatteryInfoBackUp
+  mSavedBatteryMaxTemp: 515
+  mSavedBatteryMaxCurrent: 4982812
+  mSavedBatteryBsoh: 100.00

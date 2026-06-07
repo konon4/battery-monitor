@@ -1,0 +1,45 @@
+# XcodeGen spec — generates BatteryMonitor.xcodeproj for building a distributable .app
+# (code signing, notarization, app icon, menu-bar agent options).
+#
+#   brew install xcodegen
+#   xcodegen generate
+#   open BatteryMonitor.xcodeproj
+#
+# Day-to-day development does not need this — `swift build` / `swift test` / `swift run`
+# work directly against Package.swift. The Xcode project is only for shipping the app.
+name: BatteryMonitor
+options:
+  bundleIdPrefix: com.batterymonitor
+  deploymentTarget:
+    macOS: "14.0"
+packages:
+  BatteryCore:
+    path: .
+targets:
+  BatteryMonitor:
+    type: application
+    platform: macOS
+    sources:
+      - path: App
+    dependencies:
+      - package: BatteryCore
+        product: BatteryCore
+    info:
+      path: App/Info.plist
+      properties:
+        CFBundleName: Battery Monitor
+        CFBundleDisplayName: Battery Monitor
+        LSMinimumSystemVersion: "14.0"
+        # Set to true to make it a pure menu-bar agent (no Dock icon):
+        LSUIElement: false
+        NSHumanReadableCopyright: "© 2026 BatteryMonitor contributors"
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.batterymonitor.app
+        MARKETING_VERSION: "1.0.0"
+        CURRENT_PROJECT_VERSION: "1"
+        ENABLE_HARDENED_RUNTIME: YES
+        # Sandbox is OFF: the app must execute the external `adb` binary, which App
+        # Sandbox forbids. Distribute via Developer ID + notarization instead of the
+        # Mac App Store. Set your team to sign:
+        # DEVELOPMENT_TEAM: XXXXXXXXXX
