@@ -7,6 +7,7 @@ let package = Package(
     products: [
         .library(name: "BatteryCore", targets: ["BatteryCore"]),
         .executable(name: "BatteryMonitor", targets: ["BatteryMonitor"]),
+        .executable(name: "bmprobe", targets: ["bmprobe"]),
     ],
     targets: [
         .target(
@@ -17,6 +18,11 @@ let package = Package(
             name: "BatteryMonitor",
             dependencies: ["BatteryCore"],
             path: "App"
+        ),
+        .executableTarget(
+            name: "bmprobe",
+            dependencies: ["BatteryCore"],
+            path: "Sources/bmprobe"
         ),
         .testTarget(
             name: "BatteryCoreTests",
