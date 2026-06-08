@@ -25,7 +25,7 @@ targets:
       - package: BatteryCore
         product: BatteryCore
     info:
-      path: App/Info.plist
+      path: Support/Info.plist
       properties:
         CFBundleName: Battery Monitor
         CFBundleDisplayName: Battery Monitor
@@ -36,6 +36,7 @@ targets:
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.batterymonitor.app
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         MARKETING_VERSION: "1.0.0"
         CURRENT_PROJECT_VERSION: "1"
         ENABLE_HARDENED_RUNTIME: YES

@@ -19,7 +19,8 @@ let package = Package(
         .executableTarget(
             name: "BatteryMonitorCLI",
             dependencies: ["BatteryCore"],
-            path: "App"
+            path: "App",
+            exclude: ["Assets.xcassets"]   // app-bundle asset catalog; not used by the CLI runner
         ),
         .executableTarget(
             name: "bmprobe",
