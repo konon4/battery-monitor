@@ -81,6 +81,27 @@ open BatteryMonitor.xcodeproj
 > ships **un-sandboxed**, signed with Developer ID and notarized (not via the Mac App
 > Store). See `project.yml`.
 
+## Releases
+
+Build a `.app` + `.dmg` in one step:
+
+```sh
+brew install xcodegen
+./scripts/build-release.sh 1.0        # → dist/BatteryMonitor-1.0.dmg
+```
+
+Then attach the DMG to a GitHub release:
+
+```sh
+gh release create v1.0 dist/BatteryMonitor-1.0.dmg --title "Battery Monitor 1.0"
+```
+
+> **Gatekeeper note:** the release build is *ad-hoc signed*, not notarized with a paid
+> Apple Developer ID. macOS will warn on first launch. Users open it once via
+> **right-click → Open** (or run `xattr -dr com.apple.quarantine /Applications/BatteryMonitor.app`).
+> To ship without that friction, sign with a Developer ID certificate and notarize
+> (`xcrun notarytool submit`), then `xcrun stapler staple`.
+
 ## Architecture
 
 A pure-logic Swift package (`BatteryCore`, fully unit-tested, no UI) under a thin SwiftUI

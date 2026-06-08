@@ -16,3 +16,7 @@ xcuserdata/
 # Build output
 *.app
 dist/
+
+# Xcode build output (derivedDataPath)
+build/
+App/Info.plist
