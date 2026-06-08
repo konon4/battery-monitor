@@ -24,7 +24,8 @@ struct LiveReadoutGrid: View {
                          subtitle: "Good/Normal bucket")
                 StatTile(title: "Temperature", value: Fmt.temp(sample?.temperatureC))
                 StatTile(title: "Voltage", value: Fmt.volts(sample?.voltage))
-                StatTile(title: "Charge counter", value: Fmt.mAh(sample?.chargeCounterMAh))
+                StatTile(title: "Current charge", value: Fmt.mAh(sample?.chargeCounterMAh),
+                         subtitle: "in battery now")
                 StatTile(title: "Cycle count", value: sample?.cycleCount.map(String.init) ?? "—")
             }
         }

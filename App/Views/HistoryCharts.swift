@@ -32,6 +32,9 @@ struct HistoryCharts: View {
                                  y: .value("mAh", s.estimatedFullCapacityMAh ?? 0))
                         .interpolationMethod(.catmullRom)
                         .foregroundStyle(.teal)
+                        PointMark(x: .value("Date", s.timestamp),
+                                  y: .value("mAh", s.estimatedFullCapacityMAh ?? 0))
+                        .foregroundStyle(.teal)
                         if let design = designCapacity {
                             RuleMark(y: .value("Design", design))
                                 .lineStyle(StrokeStyle(lineWidth: 1, dash: [4, 4]))

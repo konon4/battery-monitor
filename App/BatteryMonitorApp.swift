@@ -60,7 +60,7 @@ struct BatteryMonitorApp: App {
 }
 
 /// Headless verification of the SwiftData persistence path in the real app target.
-/// Run with `swift run BatteryMonitor --selftest`.
+/// Run with `swift run battery-monitor --selftest`.
 enum SelfTest {
     @MainActor
     static func run() -> Never {

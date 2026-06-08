@@ -6,7 +6,9 @@ let package = Package(
     platforms: [.macOS(.v14)],   // SwiftData + MenuBarExtra + Swift Charts
     products: [
         .library(name: "BatteryCore", targets: ["BatteryCore"]),
-        .executable(name: "BatteryMonitor", targets: ["BatteryMonitor"]),
+        // Dev/headless runner for the GUI app (the shippable .app is built from the
+        // Xcode target via project.yml — kept a distinct name to avoid a scheme clash).
+        .executable(name: "battery-monitor", targets: ["BatteryMonitorCLI"]),
         .executable(name: "bmprobe", targets: ["bmprobe"]),
     ],
     targets: [
@@ -15,7 +17,7 @@ let package = Package(
             path: "Sources/BatteryCore"
         ),
         .executableTarget(
-            name: "BatteryMonitor",
+            name: "BatteryMonitorCLI",
             dependencies: ["BatteryCore"],
             path: "App"
         ),

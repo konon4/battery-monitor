@@ -66,7 +66,8 @@ Development (no Xcode project needed):
 ```sh
 swift build          # build
 swift test           # run the BatteryCore unit tests
-swift run BatteryMonitor
+swift run battery-monitor   # launch the GUI app (dev runner)
+swift run bmprobe           # headless one-shot battery read
 ```
 
 Distributable `.app` (code signing / notarization / app icon):
