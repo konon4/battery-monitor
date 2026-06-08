@@ -3,11 +3,15 @@ import XCTest
 @testable import BatteryCore
 
 /// Replays canned shell output for tests, keyed by a substring of the command.
+/// Longest matching needle wins, so `"dumpsys batterystats"` is distinguished from the
+/// `"dumpsys battery"` substring it contains.
 struct FakeShellRunner: ShellRunner {
     let responses: [String: String]   // command-substring -> output
     func shell(serial: String, _ command: String) async throws -> String {
-        for (needle, out) in responses where command.contains(needle) { return out }
-        return ""
+        responses
+            .filter { command.contains($0.key) }
+            .max { $0.key.count < $1.key.count }?
+            .value ?? ""
     }
 }
 

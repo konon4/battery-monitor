@@ -54,23 +54,23 @@ public actor ADBClient: ShellRunner {
         do { try proc.run() } catch { throw ADBError.launchFailed(error.localizedDescription) }
 
         let limit = timeout ?? defaultTimeout
-        let watchdog = Task { () -> Bool in
+        let timedOut = TimeoutFlag()
+        let watchdog = Task {
             try? await Task.sleep(nanoseconds: UInt64(limit * 1_000_000_000))
-            if Task.isCancelled { return false }
-            if proc.isRunning { proc.terminate(); return true }
-            return false
+            if Task.isCancelled { return }
+            if proc.isRunning { timedOut.set(); proc.terminate() }
         }
 
-        await withCheckedContinuation { (cont: CheckedContinuation<Void, Never>) in
-            proc.terminationHandler = { _ in cont.resume() }
-        }
-        let didTimeout = await watchdog.value
+        // Wait for exit on a background thread. `waitUntilExit` returns immediately if the
+        // process has already exited, so there is no fast-exit race (unlike setting
+        // terminationHandler after run()).
+        await Self.waitForExit(proc)
         watchdog.cancel()
 
         let stdout = String(decoding: await outData, as: UTF8.self)
         let stderr = String(decoding: await errData, as: UTF8.self)
 
-        if didTimeout { throw ADBError.timeout(command: args.joined(separator: " ")) }
+        if timedOut.value { throw ADBError.timeout(command: args.joined(separator: " ")) }
 
         if proc.terminationStatus != 0 {
             try Self.mapError(stderr: stderr, args: args)
@@ -84,6 +84,15 @@ public actor ADBClient: ShellRunner {
         await withCheckedContinuation { cont in
             DispatchQueue.global(qos: .utility).async {
                 cont.resume(returning: handle.readDataToEndOfFile())
+            }
+        }
+    }
+
+    private nonisolated static func waitForExit(_ proc: Process) async {
+        await withCheckedContinuation { (cont: CheckedContinuation<Void, Never>) in
+            DispatchQueue.global(qos: .utility).async {
+                proc.waitUntilExit()
+                cont.resume()
             }
         }
     }
@@ -103,6 +112,14 @@ public actor ADBClient: ShellRunner {
             result.append(ADBDevice(serial: cols[0], state: state, model: model))
         }
         return result
+    }
+
+    /// Thread-safe one-shot flag (set by the watchdog, read after exit).
+    final class TimeoutFlag: @unchecked Sendable {
+        private let lock = NSLock()
+        private var flag = false
+        func set() { lock.lock(); flag = true; lock.unlock() }
+        var value: Bool { lock.lock(); defer { lock.unlock() }; return flag }
     }
 
     static func mapError(stderr: String, args: [String]) throws {

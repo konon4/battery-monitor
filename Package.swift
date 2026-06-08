@@ -28,7 +28,7 @@ let package = Package(
             name: "BatteryCoreTests",
             dependencies: ["BatteryCore"],
             path: "Tests/BatteryCoreTests",
-            resources: [.copy("Fixtures/s25_dumpsys.txt")]
+            resources: [.copy("Fixtures")]
         ),
     ]
 )

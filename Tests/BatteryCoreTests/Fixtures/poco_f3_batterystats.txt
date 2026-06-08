@@ -1,0 +1,5 @@
+  Estimated battery capacity: 3636 mAh
+  Last learned battery capacity: 4132 mAh
+  Min learned battery capacity: 4132 mAh
+  Max learned battery capacity: 4132 mAh
+    Capacity: 4132, Computed drain: 1901, actual drain: 1901-1942

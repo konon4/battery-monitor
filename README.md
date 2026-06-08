@@ -16,6 +16,9 @@ Plug the phone into a Mac and Battery Monitor surfaces it.
   capacity, BSOH bucket, temperature, voltage, charge counter.
 - **Local history** — every reading stored on-device with SwiftData; charts of health and
   capacity over time (Swift Charts).
+- **Guided connection** — a live step-by-step assistant (install adb → connect → enable
+  USB debugging → authorize) that lights up as you go, plus a banner that surfaces the
+  *“tap Allow on your phone”* prompt the instant a device shows as unauthorized.
 - **Auto-capture** — a reading is taken automatically when a known phone is plugged in
   (USB hot-plug via IOKit), plus a manual **Capture** button.
 - **Wear projection** — estimates the date your battery reaches an end-of-life threshold
@@ -24,6 +27,18 @@ Plug the phone into a Mac and Battery Monitor surfaces it.
 - **Export / Import** — portable, versioned JSON. Move data between Macs or archive it.
 - **Extensible** — adding a new phone family (e.g. Poco F3) is one `BatteryProbe`
   conformer registered in `DeviceRegistry`; nothing else changes.
+
+## Supported devices
+
+| Vendor | Probe | Health source (no root) | Verified on |
+|---|---|---|---|
+| Samsung (One UI) | `SamsungProbe` | `dumpsys battery`: ASOC %, BSOH, first-use & cell dates | Galaxy S25 (SM-S931B) |
+| Xiaomi / Redmi / Poco (MIUI/HyperOS) | `XiaomiProbe` | `dumpsys batterystats` learned capacity ÷ design | Poco F3 (M2012K11AG) |
+| Any other Android | `GenericAOSPProbe` | sysfs `charge_full`, else batterystats learned capacity | — |
+
+Charge **cycle count** is generally not exposed over ADB without root (Samsung & Xiaomi
+both withhold it; Xiaomi’s is behind the `*#*#6485#*#` service screen). Health % is the
+reliable wear metric regardless.
 
 ## Requirements
 
@@ -91,11 +106,13 @@ tested; subprocess access is actor-isolated and drains pipes concurrently to sur
 storage is behind a Repository protocol; the export schema is versioned with a migration
 hook.
 
-### Adding a device (e.g. Poco F3)
+### Adding a device family
 
-1. Write `struct XiaomiProbe: BatteryProbe` parsing that OEM's `dumpsys`/sysfs.
+`SamsungProbe` and `XiaomiProbe` show the pattern. To add another OEM:
+
+1. Write `struct YourProbe: BatteryProbe` parsing that OEM's `dumpsys`/sysfs.
 2. Add it to `DeviceRegistry.standard` before `GenericAOSPProbe`.
-3. Add the design capacity to `DesignCapacityCatalog`.
+3. Add design capacities to `DesignCapacityCatalog`.
 
 That's the entire change — UI, storage, and analysis are device-agnostic.
 
@@ -116,7 +133,7 @@ Each reading becomes a point `(ageDays, health%)`, aged from the battery's first
   `BatteryManager` API exposes charge cycle count and capacity without root; it could log
   to the same JSON schema and import here. Health %, manufacture/first-use dates remain
   system-gated.
-- Additional device probes (Poco F3 and other Xiaomi, Pixel, OnePlus).
+- Additional OEM-specific probes (Pixel, OnePlus) for richer per-vendor data.
 
 ## License
 

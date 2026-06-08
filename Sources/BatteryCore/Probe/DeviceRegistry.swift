@@ -15,7 +15,7 @@ public struct DeviceRegistry: Sendable {
     public static var standard: DeviceRegistry {
         DeviceRegistry(probes: [
             SamsungProbe(),
-            // XiaomiProbe(),   // <- later sprint: Poco F3 etc.
+            XiaomiProbe(),      // Poco / Redmi / Xiaomi (MIUI/HyperOS) via batterystats
             GenericAOSPProbe(), // last-resort fallback (supports everything)
         ])
     }

@@ -71,6 +71,31 @@ final class AppModel {
         (try? repo.samples(forDevice: serial))?.last
     }
 
+    /// Overall connection state, used to drive the onboarding/guidance UI.
+    enum ConnectionPhase: Equatable {
+        case searching          // locating adb
+        case adbMissing         // adb not installed
+        case noDevice           // adb ok, nothing plugged in
+        case unauthorized(String)
+        case offline(String)
+        case ready              // at least one authorized device
+    }
+
+    var connectionPhase: ConnectionPhase {
+        switch adbState {
+        case .searching: return .searching
+        case .missing: return .adbMissing
+        case .ready:
+            if devices.contains(where: { $0.isReady }) { return .ready }
+            if let u = devices.first(where: { $0.state == .unauthorized }) { return .unauthorized(u.serial) }
+            if let o = devices.first(where: { $0.state == .offline }) { return .offline(o.serial) }
+            return .noDevice
+        }
+    }
+
+    var hasReadyDevice: Bool { devices.contains { $0.isReady } }
+    var selectedHasHistory: Bool { !samples.isEmpty }
+
     // MARK: adb discovery
 
     func locateADB() {

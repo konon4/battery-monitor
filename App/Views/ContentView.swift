@@ -25,19 +25,21 @@ struct ContentView: View {
     var body: some View {
         @Bindable var model = model
         Group {
-            if model.adbState == .missing {
-                AdbMissingView()
-            } else {
+            switch model.connectionPhase {
+            case .adbMissing, .searching:
+                ConnectionGuideView()
+            default:
                 NavigationSplitView {
                     DeviceSidebar()
                         .frame(minWidth: 220)
                 } detail: {
-                    if model.selectedSerial != nil {
+                    if model.selectedSerial != nil && model.selectedHasHistory {
                         DeviceDetailView()
+                            .safeAreaInset(edge: .top) {
+                                if isProblemPhase { ConnectionBanner() }
+                            }
                     } else {
-                        ContentUnavailableView("No device selected",
-                                               systemImage: "bolt.batteryblock",
-                                               description: Text("Plug in an Android phone with USB debugging enabled, or pick a saved device."))
+                        ConnectionGuideView()
                     }
                 }
             }
@@ -64,6 +66,13 @@ struct ContentView: View {
             if case .success(let url) = result { importFrom(url) }
         }
         .safeAreaInset(edge: .bottom) { StatusBar() }
+    }
+
+    private var isProblemPhase: Bool {
+        switch model.connectionPhase {
+        case .unauthorized, .offline: return true
+        default: return false
+        }
     }
 
     private func startExport() {
