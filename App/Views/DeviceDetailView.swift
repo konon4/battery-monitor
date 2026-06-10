@@ -4,6 +4,11 @@ import BatteryCore
 struct DeviceDetailView: View {
     @Environment(AppModel.self) private var model
 
+    private var isConnected: Bool {
+        guard let serial = model.selectedSerial else { return false }
+        return model.connectionState(for: serial) == .device
+    }
+
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
@@ -13,12 +18,17 @@ struct DeviceDetailView: View {
                 if model.samples.isEmpty {
                     emptyState
                 } else {
-                    LiveReadoutGrid(sample: model.latestSample, profile: model.selectedProfile)
+                    // 1) Durable health (valid even when disconnected) — the headline.
+                    HealthSummary(sample: model.latestSample, profile: model.selectedProfile)
+                    // 2) Wear projection.
                     if let projection = model.projection {
                         WearPanel(projection: projection)
                     } else {
                         needsMoreDataPanel
                     }
+                    // 3) Volatile live readings — clearly a snapshot when offline.
+                    LiveReadings(sample: model.latestSample, isConnected: isConnected)
+                    // 4) History.
                     HistoryCharts(samples: model.samples,
                                   designCapacity: model.selectedProfile?.designCapacityMAh)
                 }
@@ -39,12 +49,12 @@ struct DeviceDetailView: View {
                 }
             }
             Spacer()
-            if let state = model.connectionState(for: profile.id) {
-                Label(state.badge.text, systemImage: "circle.fill")
-                    .font(.caption).foregroundStyle(state.badge.color)
-                    .padding(.horizontal, 10).padding(.vertical, 5)
-                    .background(state.badge.color.opacity(0.12), in: Capsule())
-            }
+            let badge = model.connectionState(for: profile.id)?.badge
+                ?? (text: "Disconnected", color: Color.secondary)
+            Label(badge.text, systemImage: "circle.fill")
+                .font(.caption).foregroundStyle(badge.color)
+                .padding(.horizontal, 10).padding(.vertical, 5)
+                .background(badge.color.opacity(0.12), in: Capsule())
         }
     }
 

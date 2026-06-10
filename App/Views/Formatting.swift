@@ -18,6 +18,11 @@ enum Fmt {
         return String(format: "%.0f mAh", v)
     }
     static func volts(_ v: Double?) -> String { v.map { String(format: "%.3f V", $0) } ?? "—" }
+    static func milliamps(_ v: Double?) -> String { v.map { String(format: "%.0f mA", $0) } ?? "—" }
+
+    static let relative: RelativeDateTimeFormatter = {
+        let f = RelativeDateTimeFormatter(); f.unitsStyle = .full; return f
+    }()
     static func temp(_ v: Double?) -> String { v.map { String(format: "%.1f °C", $0) } ?? "—" }
     static func days(_ v: Double?) -> String {
         guard let v else { return "—" }
