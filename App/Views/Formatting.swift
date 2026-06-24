@@ -23,6 +23,14 @@ enum Fmt {
     static let relative: RelativeDateTimeFormatter = {
         let f = RelativeDateTimeFormatter(); f.unitsStyle = .full; return f
     }()
+
+    /// Elapsed duration as a plain span without "ago", e.g. "10 months", "1.8 years".
+    static func duration(since date: Date, to now: Date = Date()) -> String {
+        let days = max(0, now.timeIntervalSince(date) / 86_400)
+        if days < 60 { return "\(Int(days.rounded())) days" }
+        if days < 365 { return "\(Int((days / 30.44).rounded())) months" }
+        return String(format: "%.1f years", days / 365.25)
+    }
     static func temp(_ v: Double?) -> String { v.map { String(format: "%.1f °C", $0) } ?? "—" }
     static func days(_ v: Double?) -> String {
         guard let v else { return "—" }

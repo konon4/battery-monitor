@@ -18,7 +18,7 @@ struct HealthSummary: View {
             LazyVGrid(columns: columns, spacing: 12) {
                 StatTile(title: "Wear", value: Fmt.pct(wear, digits: 1),
                          subtitle: "capacity lost", tint: wearColor(wear), emphasis: true)
-                StatTile(title: "Health (ASOC)", value: Fmt.pct(sample?.healthPercent),
+                StatTile(title: healthTitle, value: Fmt.pct(sample?.healthPercent),
                          subtitle: "of original", tint: healthColor(sample?.healthPercent), emphasis: true)
                 StatTile(title: "Full capacity", value: Fmt.mAh(sample?.estimatedFullCapacityMAh),
                          subtitle: designText, emphasis: true)
@@ -37,12 +37,17 @@ struct HealthSummary: View {
         profile?.designCapacityMAh.map { "of \($0) mAh when new" } ?? "estimated"
     }
 
+    // ASOC is a Samsung-specific metric; other vendors derive health from capacity ÷ design.
+    private var healthTitle: String {
+        (profile?.identity.isSamsung ?? false) ? "Health (ASOC)" : "Health"
+    }
+
     private var healthExtras: [(String, String, String)] {
         var out: [(String, String, String)] = []
         if let bsoh = sample?.bsoh { out.append(("BSOH", String(format: "%.0f", bsoh), "Good/Normal bucket")) }
         if let cycles = sample?.cycleCount { out.append(("Cycle count", "\(cycles)", "charge cycles")) }
         if let first = profile?.firstUseDate {
-            out.append(("In service", Fmt.relative.localizedString(for: first, relativeTo: Date()), "since \(Fmt.date.string(from: first))"))
+            out.append(("In service", Fmt.duration(since: first), "since \(Fmt.date.string(from: first))"))
         }
         return out
     }

@@ -33,9 +33,9 @@ struct ContentView: View {
     @State private var showExporter = false
     @State private var showImporter = false
     @State private var exportFile = JSONFile(data: Data())
-    @State private var showSettings = false
     @State private var showReportExporter = false
     @State private var reportFile = PDFFile(data: Data())
+    // Settings presentation lives on the model so deep-links (e.g. from the wear panel) can open it.
 
     var body: some View {
         @Bindable var model = model
@@ -72,10 +72,10 @@ struct ContentView: View {
                     .disabled(!model.selectedHasHistory)
                 Button { startExport() } label: { Label("Export", systemImage: "square.and.arrow.up") }
                 Button { showImporter = true } label: { Label("Import", systemImage: "square.and.arrow.down") }
-                Button { showSettings = true } label: { Label("Settings", systemImage: "gearshape") }
+                Button { model.presentSettings = true } label: { Label("Settings", systemImage: "gearshape") }
             }
         }
-        .sheet(isPresented: $showSettings) { SettingsSheet() }
+        .sheet(isPresented: $model.presentSettings) { SettingsSheet() }
         .fileExporter(isPresented: $showExporter, document: exportFile,
                       contentType: .json,
                       defaultFilename: "battery-history-\(Int(Date().timeIntervalSince1970)).json") { _ in }

@@ -26,4 +26,22 @@ public enum DesignCapacityCatalog {
         }
         return nil
     }
+
+    /// model substring (case-insensitive) -> consumer marketing name.
+    public static let marketingNames: [(match: String, name: String)] = [
+        ("SM-S931", "Galaxy S25"),
+        ("SM-S936", "Galaxy S25+"),
+        ("SM-S938", "Galaxy S25 Ultra"),
+        ("SM-S937", "Galaxy S25 Edge"),
+        ("M2012K11AG", "Poco F3"),
+    ]
+
+    /// Friendly device name for a model string, or `nil` if unknown.
+    public static func marketingName(forModel model: String) -> String? {
+        let needle = model.uppercased()
+        for entry in marketingNames where needle.contains(entry.match.uppercased()) {
+            return entry.name
+        }
+        return nil
+    }
 }

@@ -18,7 +18,7 @@ struct DeviceSidebar: View {
                 Section("Connected (not yet captured)") {
                     ForEach(unsaved, id: \.serial) { d in
                         VStack(alignment: .leading, spacing: 2) {
-                            Text(d.model ?? d.serial).font(.body)
+                            Text(unsavedName(d)).font(.body)
                             Text(d.state.badge.text).font(.caption).foregroundStyle(d.state.badge.color)
                         }
                         .tag(d.serial as String?)
@@ -27,6 +27,11 @@ struct DeviceSidebar: View {
             }
         }
         .listStyle(.sidebar)
+    }
+
+    private func unsavedName(_ d: ADBDevice) -> String {
+        guard let model = d.model else { return d.serial }
+        return DesignCapacityCatalog.marketingName(forModel: model) ?? model
     }
 }
 
@@ -37,7 +42,7 @@ private struct DeviceRow: View {
     var body: some View {
         HStack {
             VStack(alignment: .leading, spacing: 2) {
-                Text(profile.label).font(.body)
+                Text(profile.displayName).font(.body)
                 Text(profile.identity.model).font(.caption).foregroundStyle(.secondary)
             }
             Spacer()

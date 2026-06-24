@@ -32,6 +32,13 @@ public struct DeviceProfile: Hashable, Codable, Sendable, Identifiable {
         self.chemistry = chemistry
     }
 
+    /// Name to show in the UI: the user's custom label if set, otherwise the consumer
+    /// marketing name (e.g. "Poco F3"), falling back to the raw model.
+    public var displayName: String {
+        if label != identity.model { return label }                       // user customized
+        return DesignCapacityCatalog.marketingName(forModel: identity.model) ?? label
+    }
+
     private enum CodingKeys: String, CodingKey {
         case identity, label, designCapacityMAh, firstUseDate, cellManufactureDate, chemistry
     }

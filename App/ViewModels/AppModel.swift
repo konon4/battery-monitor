@@ -18,6 +18,8 @@ final class AppModel {
     var statusMessage: String?
     var errorMessage: String?
     private(set) var isBusy = false
+    /// Drives the Settings sheet (so deep links like "Set first-use date" can open it).
+    var presentSettings = false
 
     var selectedSerial: String? { didSet { loadSelected() } }
 

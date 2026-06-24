@@ -42,7 +42,7 @@ struct DeviceDetailView: View {
     private func header(_ profile: DeviceProfile) -> some View {
         HStack(alignment: .top) {
             VStack(alignment: .leading, spacing: 4) {
-                Text(profile.label).font(.largeTitle.bold())
+                Text(profile.displayName).font(.largeTitle.bold())
                 Text("\(profile.identity.manufacturer) · \(profile.identity.model) · \(profile.identity.serial)")
                     .font(.callout).foregroundStyle(.secondary)
                 if let first = profile.firstUseDate {

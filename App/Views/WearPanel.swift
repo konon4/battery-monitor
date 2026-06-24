@@ -2,6 +2,7 @@ import SwiftUI
 import BatteryCore
 
 struct WearPanel: View {
+    @Environment(AppModel.self) private var model
     let projection: WearProjection
 
     var body: some View {
@@ -37,6 +38,16 @@ struct WearPanel: View {
 
                 Text(disclaimer)
                     .font(.caption).foregroundStyle(.secondary)
+
+                if projection.basis == .typicalCurveNoDate {
+                    Button {
+                        model.presentSettings = true
+                    } label: {
+                        Label("Set first-use date for an accurate projection", systemImage: "calendar.badge.plus")
+                            .font(.caption)
+                    }
+                    .buttonStyle(.link)
+                }
             }
             .padding(8)
         }
