@@ -15,6 +15,10 @@ Plug the phone into a Mac and Battery Monitor surfaces it.
 |---|---|
 | ![Battery Monitor](docs/screenshots/app-main.png) | ![PDF report](docs/screenshots/report.png) |
 
+Chemistry-aware wear projection (`SOH = 1 − α·tᶻ`) with a fixed-scale capacity chart and an 80% end-of-life line:
+
+![Wear projection charts](docs/screenshots/projection.png)
+
 > Verified without root on a Galaxy S25 (SM-S931B) and a Poco F3 (M2012K11AG).
 > See [`docs/samsung-battery-health-adb.md`](docs/samsung-battery-health-adb.md).
 
