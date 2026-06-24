@@ -14,6 +14,8 @@ final class DeviceProfileEntity {
     var designCapacityMAh: Int?
     var firstUseDate: Date?
     var cellManufactureDate: Date?
+    /// Raw value of `BatteryChemistry`; defaulted so SwiftData migrates older stores.
+    var chemistryRaw: String = BatteryChemistry.graphite.rawValue
 
     @Relationship(deleteRule: .cascade, inverse: \BatterySampleEntity.device)
     var samples: [BatterySampleEntity] = []
@@ -27,6 +29,7 @@ final class DeviceProfileEntity {
         self.designCapacityMAh = profile.designCapacityMAh
         self.firstUseDate = profile.firstUseDate
         self.cellManufactureDate = profile.cellManufactureDate
+        self.chemistryRaw = profile.chemistry.rawValue
     }
 
     func apply(_ profile: DeviceProfile) {
@@ -34,6 +37,7 @@ final class DeviceProfileEntity {
         designCapacityMAh = profile.designCapacityMAh
         firstUseDate = profile.firstUseDate
         cellManufactureDate = profile.cellManufactureDate
+        chemistryRaw = profile.chemistry.rawValue
     }
 
     var identity: DeviceIdentity {
@@ -42,7 +46,8 @@ final class DeviceProfileEntity {
 
     var asProfile: DeviceProfile {
         DeviceProfile(identity: identity, label: label, designCapacityMAh: designCapacityMAh,
-                      firstUseDate: firstUseDate, cellManufactureDate: cellManufactureDate)
+                      firstUseDate: firstUseDate, cellManufactureDate: cellManufactureDate,
+                      chemistry: BatteryChemistry(rawValue: chemistryRaw) ?? .graphite)
     }
 }
 

@@ -16,6 +16,9 @@ struct BatteryMonitorApp: App {
         if CommandLine.arguments.contains("--report-test") {
             ReportSelfTest.run()   // exits the process
         }
+        if CommandLine.arguments.contains("--charts-test") {
+            ChartsSelfTest.run()   // exits the process
+        }
         do {
             container = try Self.makeContainer()
         } catch {
@@ -97,6 +100,44 @@ enum SelfTest {
     }
 }
 
+/// Headless render of the redesigned HistoryCharts to a PNG for visual review. `--charts-test`.
+enum ChartsSelfTest {
+    @MainActor
+    static func run() -> Never {
+        let firstUse = Date().addingTimeInterval(-300 * 86_400)
+        let samples = [
+            BatterySample(deviceSerial: "d", timestamp: firstUse.addingTimeInterval(60 * 86_400),
+                          levelPercent: 70, healthPercent: 98, estimatedFullCapacityMAh: 3920),
+            BatterySample(deviceSerial: "d", timestamp: Date(),
+                          levelPercent: 66, healthPercent: 96, estimatedFullCapacityMAh: 3840),
+        ]
+        let projection = WearEstimator().project(samples: samples, firstUseDate: firstUse,
+                                                 chemistry: .graphite, now: Date())
+        let size = CGSize(width: 800, height: 520)
+        let proj = projectedCurve(projection, from: samples.last?.timestamp)
+        let view = VStack(alignment: .leading, spacing: 24) {
+            Text("Battery health over time").font(.headline)
+            HealthChartView(points: samples, projected: proj, threshold: 80)
+            Text("Estimated capacity (mAh)").font(.headline)
+            CapacityChartView(points: samples, projected: proj, design: 4000)
+        }
+            .padding(20).frame(width: size.width, height: size.height).background(.white)
+        let renderer = ImageRenderer(content: view)
+        renderer.proposedSize = ProposedViewSize(size)
+        let pdf = NSMutableData()
+        renderer.render { _, ctxClosure in
+            var box = CGRect(origin: .zero, size: size)
+            guard let consumer = CGDataConsumer(data: pdf as CFMutableData),
+                  let ctx = CGContext(consumer: consumer, mediaBox: &box, nil) else { return }
+            ctx.beginPDFPage(nil); ctxClosure(ctx); ctx.endPDFPage(); ctx.closePDF()
+        }
+        let url = URL.temporaryDirectory.appendingPathComponent("charts-test.pdf")
+        try? (pdf as Data).write(to: url)
+        print("CHARTS-TEST: PASS bytes=\(pdf.count) → \(url.path)")
+        exit(0)
+    }
+}
+
 /// Headless verification that the PDF report renders. `--report-test`.
 enum ReportSelfTest {
     @MainActor
@@ -111,8 +152,8 @@ enum ReportSelfTest {
                           levelPercent: 66, voltage: 4.11, temperatureC: 30, healthPercent: 96,
                           bsoh: 100, estimatedFullCapacityMAh: 3840),
         ]
-        let points = WearEstimator.points(from: samples, firstUseDate: firstUse)
-        let projection = WearEstimator().project(points: points, anchorDate: firstUse)
+        let projection = WearEstimator().project(samples: samples, firstUseDate: firstUse,
+                                                 chemistry: .graphite, now: Date())
         let data = BatteryReportData(profile: profile, sample: samples[1], projection: projection,
                                      samples: samples, shopName: "Kardan Repair",
                                      threshold: 80, generatedAt: Date())

@@ -196,10 +196,9 @@ final class AppModel {
 
     private func recomputeProjection() {
         guard let profile = selectedProfile else { projection = nil; return }
-        let anchor = profile.firstUseDate ?? samples.first?.timestamp
-        guard let anchor else { projection = nil; return }
-        let points = WearEstimator.points(from: samples, firstUseDate: anchor)
-        projection = WearEstimator(threshold: wearThreshold).project(points: points, anchorDate: anchor)
+        projection = WearEstimator(threshold: wearThreshold)
+            .project(samples: samples, firstUseDate: profile.firstUseDate,
+                     chemistry: profile.chemistry, now: Date())
     }
 
     func updateProfile(_ profile: DeviceProfile) {

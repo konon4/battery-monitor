@@ -3,76 +3,81 @@ import XCTest
 
 final class WearEstimatorTests: XCTestCase {
     let firstUse = date(2025, 8, 12)
+    let est = WearEstimator(threshold: 80)
 
-    func testSingleMeasurementLinearProjection() {
-        // One point: 96% health at 300 days → 4% loss / 300d = 0.0133%/day.
-        // 20% total loss to reach 80% → age 1500d, i.e. 1200 more days.
-        let p = [WearPoint(ageDays: 300, healthPercent: 96)]
-        let est = WearEstimator()
-        let proj = est.project(points: p, anchorDate: firstUse)!
-        XCTAssertEqual(proj.currentHealthPercent, 96)
-        XCTAssertEqual(proj.wearPercent, 4, accuracy: 1e-9)
-        XCTAssertEqual(proj.ratePerDay, 4.0 / 300.0, accuracy: 1e-9)
-        XCTAssertEqual(proj.daysToThreshold!, 1200, accuracy: 1e-6)
-        XCTAssertEqual(proj.confidence, .low)
-        assertDate(proj.projectedDateToThreshold,
-                   firstUse.addingTimeInterval(1500 * 86_400), accuracy: 1)
+    private func sample(_ ts: Date, _ health: Double) -> BatterySample {
+        BatterySample(deviceSerial: "d", timestamp: ts, levelPercent: 50, healthPercent: health)
     }
 
-    func testLinearTrendRecoveredFromManyPoints() {
-        // Perfectly linear: health = 100 - 0.05*t. Should fit and project 80% at t=400.
-        let pts = stride(from: 30.0, through: 360.0, by: 30.0).map {
-            WearPoint(ageDays: $0, healthPercent: 100 - 0.05 * $0)
+    // MARK: The bug this replaces — sparse/close readings must NOT extrapolate to "dead soon".
+
+    func testTwoCloseReadingsDoNotProduceAbsurdProjection() {
+        // 90% now, no first-use date (Xiaomi case). Previously this gave ~0.6%/day → dead in 17 days.
+        let now = date(2026, 6, 10)
+        let samples = [sample(date(2026, 5, 25), 91), sample(now, 90)]
+        let p = est.project(samples: samples, firstUseDate: nil, chemistry: .graphite, now: now)!
+        XCTAssertEqual(p.basis, .typicalCurveNoDate)
+        XCTAssertEqual(p.confidence, .low)
+        // Must be years, not days, away.
+        XCTAssertGreaterThan(p.daysToThreshold!, 365)
+        // Local rate is sane (not hundreds of %/yr).
+        XCTAssertLessThan(p.ratePerYearPercent, 25)
+        XCTAssertGreaterThan(p.ratePerYearPercent, 0)
+    }
+
+    func testSingleReadingWithAgeAnchorsTypicalCurve() {
+        // S25-like: 96% at ~10 months, one reading.
+        let now = firstUse.addingTimeInterval(300 * 86_400)
+        let p = est.project(samples: [sample(now, 96)], firstUseDate: firstUse, chemistry: .graphite, now: now)!
+        XCTAssertEqual(p.basis, .anchoredToReading)
+        XCTAssertEqual(p.currentHealthPercent, 96, accuracy: 1e-6)
+        // Curve passes through the reading: ~96% at the reading's age.
+        XCTAssertEqual(p.healthPercent(at: now)!, 96, accuracy: 0.5)
+        // Decelerating √t-ish curve → years to 80%, well beyond 1 year.
+        XCTAssertGreaterThan(p.daysToThreshold!, 365)
+    }
+
+    // MARK: Fitting with enough well-separated data.
+
+    func testFitsRateFromManyReadings() {
+        // Synthetic graphite curve SOH = 1 - 0.05*t^0.75 sampled monthly for a year.
+        let z = 0.75, alpha = 0.05
+        let samples = stride(from: 30.0, through: 360.0, by: 30.0).map { day -> BatterySample in
+            let t = day / 365.25
+            let soh = (1 - alpha * pow(t, z)) * 100
+            return sample(firstUse.addingTimeInterval(day * 86_400), soh)
         }
-        let proj = WearEstimator().project(points: pts, anchorDate: firstUse)!
-        XCTAssertEqual(proj.ratePerDay, 0.05, accuracy: 1e-6)
-        let ageAt80 = (proj.daysToThreshold! + pts.last!.ageDays)
-        XCTAssertEqual(ageAt80, 400, accuracy: 1e-3)
-        XCTAssertGreaterThan(proj.r2!, 0.99)
-        XCTAssertEqual(proj.confidence, .high)
+        let now = firstUse.addingTimeInterval(360 * 86_400)
+        let p = est.project(samples: samples, firstUseDate: firstUse, chemistry: .graphite, now: now)!
+        XCTAssertEqual(p.basis, .fitted)
+        XCTAssertEqual(p.confidence, .high)
+        // Recovered α is close to the true 0.05 (shrunk slightly toward the 0.045 prior).
+        XCTAssertEqual(p.curveAlpha, 0.05, accuracy: 0.01)
     }
 
-    func testSqrtAgingPreferredForSqrtData() {
-        // health = 100 - 1.2*sqrt(t): the √t model should win on R².
-        let pts = stride(from: 10.0, through: 360.0, by: 20.0).map {
-            WearPoint(ageDays: $0, healthPercent: 100 - 1.2 * ($0).squareRoot())
-        }
-        let proj = WearEstimator().project(points: pts, anchorDate: firstUse)!
-        XCTAssertEqual(proj.modelName, "√t calendar aging")
-        XCTAssertGreaterThan(proj.r2!, 0.999)
+    // MARK: Chemistry differences.
+
+    func testChemistryChangesProjection() {
+        let now = firstUse.addingTimeInterval(300 * 86_400)
+        let s = [sample(now, 90)]
+        let lfp = est.project(samples: s, firstUseDate: firstUse, chemistry: .lfp, now: now)!
+        let si = est.project(samples: s, firstUseDate: firstUse, chemistry: .siliconCarbon, now: now)!
+        XCTAssertEqual(lfp.chemistry, .lfp)
+        XCTAssertEqual(si.chemistry, .siliconCarbon)
+        // Same reading, different curve shape → different time-to-threshold.
+        XCTAssertNotEqual(lfp.daysToThreshold!, si.daysToThreshold!, accuracy: 1)
     }
 
-    func testEmptyPointsYieldNoProjection() {
-        XCTAssertNil(WearEstimator().project(points: [], anchorDate: firstUse))
+    func testRateClampedAndBandOrdered() {
+        let now = firstUse.addingTimeInterval(300 * 86_400)
+        let p = est.project(samples: [sample(now, 60)], firstUseDate: firstUse, chemistry: .graphite, now: now)!
+        XCTAssertLessThanOrEqual(p.ratePerYearPercent, 25)
+        // Early (fast use) bound is on/before the late (slow use) bound.
+        XCTAssertLessThanOrEqual(p.projectedDateEarly!, p.projectedDateLate!)
     }
 
-    func testConfidenceGrowsWithData() {
-        XCTAssertEqual(WearEstimator.confidence(count: 1, spanDays: 0, r2: 1), .low)
-        XCTAssertEqual(WearEstimator.confidence(count: 2, spanDays: 20, r2: 0.5), .medium)
-        XCTAssertEqual(WearEstimator.confidence(count: 5, spanDays: 90, r2: 0.95), .high)
-    }
-
-    func testPointsBuilderAgesFromFirstUse() {
-        let samples = [
-            BatterySample(deviceSerial: "a", timestamp: firstUse.addingTimeInterval(100 * 86_400),
-                          levelPercent: 80, healthPercent: 98),
-            BatterySample(deviceSerial: "a", timestamp: firstUse.addingTimeInterval(-10),
-                          levelPercent: 50, healthPercent: 100), // before first-use → dropped
-            BatterySample(deviceSerial: "a", timestamp: firstUse.addingTimeInterval(200 * 86_400),
-                          levelPercent: 60, healthPercent: nil), // no health → dropped
-        ]
-        let pts = WearEstimator.points(from: samples, firstUseDate: firstUse)
-        XCTAssertEqual(pts.count, 1)
-        XCTAssertEqual(pts[0].ageDays, 100, accuracy: 1e-6)
-        XCTAssertEqual(pts[0].healthPercent, 98)
-    }
-}
-
-private extension XCTestCase {
-    func assertDate(_ a: Date?, _ b: Date, accuracy: TimeInterval,
-                    file: StaticString = #filePath, line: UInt = #line) {
-        guard let a else { return XCTFail("nil date", file: file, line: line) }
-        XCTAssertEqual(a.timeIntervalSince1970, b.timeIntervalSince1970, accuracy: accuracy,
-                       file: file, line: line)
+    func testNoHealthReadingsYieldsNil() {
+        let s = [BatterySample(deviceSerial: "d", timestamp: date(2026, 6, 1), levelPercent: 50)]
+        XCTAssertNil(est.project(samples: s, firstUseDate: firstUse, chemistry: .graphite, now: date(2026, 6, 1)))
     }
 }

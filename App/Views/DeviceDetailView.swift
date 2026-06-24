@@ -30,7 +30,9 @@ struct DeviceDetailView: View {
                     LiveReadings(sample: model.latestSample, isConnected: isConnected)
                     // 4) History.
                     HistoryCharts(samples: model.samples,
-                                  designCapacity: model.selectedProfile?.designCapacityMAh)
+                                  designCapacity: model.selectedProfile?.designCapacityMAh,
+                                  projection: model.projection,
+                                  threshold: model.wearThreshold)
                 }
             }
             .padding(20)

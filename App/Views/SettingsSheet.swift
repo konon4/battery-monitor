@@ -78,6 +78,11 @@ private struct DeviceSettingsEditor: View {
                    selection: Binding(get: { profile.firstUseDate ?? Date() },
                                       set: { profile.firstUseDate = $0 }),
                    displayedComponents: .date)
+        Picker("Cell chemistry", selection: $profile.chemistry) {
+            ForEach(BatteryChemistry.allCases, id: \.self) { Text($0.label).tag($0) }
+        }
+        Text("Affects the wear-projection curve. Li-poly = standard Li-ion. Pick Si-C / high-voltage for newer flagships.")
+            .font(.caption).foregroundStyle(.secondary)
         Button("Save") { onSave(profile) }
     }
 }

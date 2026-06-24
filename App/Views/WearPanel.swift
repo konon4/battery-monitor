@@ -21,27 +21,53 @@ struct WearPanel: View {
                 HStack(alignment: .top, spacing: 24) {
                     metric("Current wear", Fmt.pct(projection.wearPercent, digits: 1),
                            sub: "health \(Fmt.pct(projection.currentHealthPercent))")
-                    metric("Degrading at", String(format: "%.3f%%/day", projection.ratePerDay),
-                           sub: String(format: "≈ %.1f%%/yr", projection.ratePerDay * 365.25))
+                    metric("Fading at", String(format: "≈ %.1f%%/yr", projection.ratePerYearPercent),
+                           sub: "at current age")
                     metric("Reaches \(Int(projection.threshold))%",
-                           projection.projectedDateToThreshold.map { Fmt.date.string(from: $0) } ?? "—",
-                           sub: "in " + Fmt.days(projection.daysToThreshold))
+                           projection.projectedDate.map { Fmt.date.string(from: $0) } ?? "—",
+                           sub: rangeText)
                 }
 
                 HStack(spacing: 6) {
-                    Text("Model: \(projection.modelName)")
-                    if let r2 = projection.r2 { Text(String(format: "· R² %.3f", r2)) }
-                    Text("· \(projection.sampleCount) sample\(projection.sampleCount == 1 ? "" : "s")")
+                    Text("Chemistry: \(projection.chemistry.shortLabel)")
+                    Text("· \(basisText)")
+                    Text("· \(projection.sampleCount) reading\(projection.sampleCount == 1 ? "" : "s")")
                 }
                 .font(.caption).foregroundStyle(.tertiary)
 
-                if projection.confidence == .low {
-                    Text("Estimate from limited data — it refines automatically as more measurements are captured.")
-                        .font(.caption).foregroundStyle(.secondary)
-                }
+                Text(disclaimer)
+                    .font(.caption).foregroundStyle(.secondary)
             }
             .padding(8)
         }
+    }
+
+    private var rangeText: String {
+        guard let early = projection.projectedDateEarly, let late = projection.projectedDateLate else {
+            return "in " + Fmt.days(projection.daysToThreshold)
+        }
+        return "range \(Fmt.date.string(from: early)) – \(Fmt.date.string(from: late))"
+    }
+
+    private var basisText: String {
+        switch projection.basis {
+        case .fitted:             return "fitted to your readings"
+        case .anchoredToReading:  return "typical \(projection.chemistry.shortLabel) curve through last reading"
+        case .typicalCurveNoDate: return "typical curve (set first-use date for accuracy)"
+        }
+    }
+
+    private var disclaimer: String {
+        var s = "Estimate using a \(projection.chemistry.shortLabel) calendar+cycle aging curve (SOH ≈ 1 − α·tᶻ). "
+        switch projection.basis {
+        case .fitted: s += "Refines as more readings accumulate; a degradation “knee” can accelerate loss below ~85%."
+        case .anchoredToReading, .typicalCurveNoDate:
+            s += "Limited data — refines automatically as you capture more measurements."
+        }
+        if projection.chemistry.isUncertain {
+            s += " Silicon cells have little public longevity data — treat as approximate."
+        }
+        return s
     }
 
     private func metric(_ title: String, _ value: String, sub: String) -> some View {

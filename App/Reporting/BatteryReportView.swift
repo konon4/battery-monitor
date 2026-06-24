@@ -116,11 +116,15 @@ struct BatteryReportView: View {
             Text("Wear projection").font(.system(size: 13, weight: .semibold))
             HStack(spacing: 20) {
                 Text("Reaches \(Int(p.threshold))% health: " +
-                     (p.projectedDateToThreshold.map { Fmt.date.string(from: $0) } ?? "—"))
-                Text("(" + Fmt.days(p.daysToThreshold) + ")").foregroundStyle(.secondary)
+                     (p.projectedDate.map { Fmt.date.string(from: $0) } ?? "—"))
+                Text(String(format: "fading ≈ %.1f%%/yr", p.ratePerYearPercent)).foregroundStyle(.secondary)
             }
             .font(.system(size: 12))
-            Text("Model: \(p.modelName) · \(p.confidence.label.lowercased()) confidence · \(p.sampleCount) reading(s)")
+            if let early = p.projectedDateEarly, let late = p.projectedDateLate {
+                Text("Likely range: \(Fmt.date.string(from: early)) – \(Fmt.date.string(from: late))")
+                    .font(.system(size: 11)).foregroundStyle(.secondary)
+            }
+            Text("\(p.chemistry.shortLabel) aging model · \(p.confidence.label.lowercased()) confidence · \(p.sampleCount) reading(s)")
                 .font(.system(size: 10)).foregroundStyle(.secondary)
         }
         .padding(12)

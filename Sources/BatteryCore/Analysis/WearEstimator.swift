@@ -1,87 +1,146 @@
 import Foundation
 
-/// The result of projecting battery wear forward.
+/// Projection of battery wear forward in time, with an uncertainty band.
 public struct WearProjection: Sendable, Hashable {
-    public let modelName: String
-    public let sampleCount: Int
-    public let currentHealthPercent: Double
-    public let wearPercent: Double                 // 100 − currentHealth
-    public let ratePerDay: Double                  // local degradation rate, %/day
-    public let threshold: Double                   // end-of-life health, e.g. 80
-    public let projectedDateToThreshold: Date?
-    public let daysToThreshold: Double?
-    public let r2: Double?
-    public let confidence: Confidence
-
+    /// How the projection was derived.
+    public enum Basis: String, Sendable {
+        case fitted              // ≥3 well-separated readings → individual rate fitted
+        case anchoredToReading   // few readings → chemistry curve scaled through the latest one
+        case typicalCurveNoDate  // no first-use date → device placed on the typical curve
+    }
     public enum Confidence: String, Sendable { case low, medium, high }
+
+    public let chemistry: BatteryChemistry
+    public let currentHealthPercent: Double
+    public let wearPercent: Double
+    public let ratePerYearPercent: Double          // local fade rate at the current age
+    public let threshold: Double                    // end-of-life health %, e.g. 80
+
+    public let daysToThreshold: Double?             // typical
+    public let projectedDate: Date?                 // typical
+    public let projectedDateEarly: Date?            // fast-use bound (sooner)
+    public let projectedDateLate: Date?             // slow-use bound (later)
+
+    public let basis: Basis
+    public let confidence: Confidence
+    public let sampleCount: Int
+
+    // Curve params for charting: SOH(t) = 1 − α·((date−anchor)/year)^z
+    public let curveAnchor: Date?
+    public let curveAlpha: Double
+    public let curveZ: Double
+
+    /// Modelled health % at a future/elapsed date along the fitted curve.
+    public func healthPercent(at date: Date) -> Double? {
+        guard let anchor = curveAnchor else { return nil }
+        let t = date.timeIntervalSince(anchor) / WearEstimator.year
+        guard t >= 0 else { return nil }
+        return max(0, 100 * (1 - curveAlpha * pow(t, curveZ)))
+    }
 }
 
-/// Chooses the best-fitting ``WearModel`` for the available data and projects forward.
+/// Chemistry-aware capacity-fade projector.
 ///
-/// One measurement → linear-calendar day-one estimate (low confidence). As measurements
-/// accumulate, richer models become eligible and the best fit (by R²) wins, with
-/// confidence rising as the data spans more time.
+/// Model: `SOH(t) = 1 − α·t^z`, with z and the α prior set per ``BatteryChemistry``.
+/// Crucially it projects against **battery age** (from first-use date), never against the
+/// gap between sample timestamps — and it constrains the curve shape so sparse, closely
+/// spaced readings can't produce absurd "dead in weeks" extrapolations. With few readings
+/// it scales the chemistry's typical curve through the latest point and shrinks any fitted
+/// rate toward the population prior (empirical-Bayes style).
 public struct WearEstimator: Sendable {
-    public let threshold: Double
-    public let models: [any WearModel]
+    public static let year: TimeInterval = 365.25 * 86_400
 
-    public init(threshold: Double = 80, models: [any WearModel]? = nil) {
-        self.threshold = threshold
-        self.models = models ?? [LinearCalendarModel(), LinearRegressionModel(), SqrtCalendarModel()]
-    }
+    public let threshold: Double   // health %, e.g. 80
+    public init(threshold: Double = 80) { self.threshold = threshold }
 
-    /// Build wear points from samples that carry a health reading, aged from `firstUseDate`.
-    public static func points(from samples: [BatterySample], firstUseDate: Date) -> [WearPoint] {
-        samples.compactMap { s in
+    public func project(samples: [BatterySample],
+                        firstUseDate: Date?,
+                        chemistry: BatteryChemistry,
+                        now: Date) -> WearProjection? {
+        let health = samples.compactMap { s -> (t: Date, soh: Double)? in
             guard let h = s.healthPercent else { return nil }
-            let age = s.timestamp.timeIntervalSince(firstUseDate) / 86_400.0
-            guard age > 0 else { return nil }
-            return WearPoint(ageDays: age, healthPercent: h, cycleCount: s.cycleCount)
-        }.sorted { $0.ageDays < $1.ageDays }
-    }
+            return (s.timestamp, h / 100)
+        }.sorted { $0.t < $1.t }
+        guard let latest = health.last else { return nil }
 
-    /// Project wear. `anchorDate` (first-use date) maps model ages back to calendar dates.
-    public func project(points: [WearPoint], anchorDate: Date?) -> WearProjection? {
-        guard let latest = points.max(by: { $0.ageDays < $1.ageDays }) else { return nil }
+        let z = chemistry.exponent
+        let prior = chemistry.alphaPrior
+        let range = chemistry.alphaRange
+        let lossEol = 1 - threshold / 100
+        let sohNow = latest.soh
 
-        // Eligible models, best R² first (ties broken by simpler/earlier model).
-        let fits = models
-            .compactMap { model -> FittedWearModel? in
-                points.count >= model.minimumPoints ? model.fit(points) : nil
+        var alpha: Double
+        var ageNow: Double                 // years
+        var anchor: Date
+        var basis: WearProjection.Basis
+        var confidence: WearProjection.Confidence
+        let n = health.count
+
+        if let firstUse = firstUseDate {
+            anchor = firstUse
+            ageNow = max(0.02, latest.t.timeIntervalSince(firstUse) / Self.year)
+            let pts = health.map { (age: $0.t.timeIntervalSince(firstUse) / Self.year, soh: $0.soh) }
+                .filter { $0.age > 0.02 }
+            let ageSpanDays = ((pts.map(\.age).max() ?? 0) - (pts.map(\.age).min() ?? 0)) * 365.25
+            let sohSpan = ((pts.map(\.soh).max() ?? 0) - (pts.map(\.soh).min() ?? 0)) * 100
+
+            if pts.count >= 3, ageSpanDays >= 30, sohSpan >= 1.5 {
+                // Fit α with z fixed, then shrink toward the prior.
+                let num = pts.reduce(0.0) { $0 + pow($1.age, z) * (1 - $1.soh) }
+                let den = pts.reduce(0.0) { $0 + pow($1.age, 2 * z) }
+                let fit = den > 0 ? num / den : prior
+                let w = min(1.0, Double(pts.count - 2) / 3.0)
+                alpha = w * fit + (1 - w) * prior
+                basis = .fitted
+                confidence = (pts.count >= 4 && ageSpanDays >= 60) ? .high : .medium
+            } else {
+                // Scale the chemistry's typical curve through the latest reading.
+                alpha = (1 - sohNow) / pow(ageNow, z)
+                basis = .anchoredToReading
+                confidence = .low
             }
-            .sorted { $0.r2 > $1.r2 }
-        guard let best = fits.first else { return nil }
+        } else {
+            // No real age: place the device on the chemistry's typical curve.
+            alpha = prior
+            ageNow = pow(max(0, 1 - sohNow) / prior, 1 / z)
+            anchor = now.addingTimeInterval(-ageNow * Self.year)
+            basis = .typicalCurveNoDate
+            confidence = .low
+        }
+        alpha = min(max(alpha, range.lowerBound), range.upperBound)
 
-        // Local rate at the latest age (numerical derivative), reported as positive %/day.
-        let dt = 1.0
-        let rate = (best.predictHealth(latest.ageDays) - best.predictHealth(latest.ageDays + dt)) / dt
-
-        let ageAtThreshold = best.ageDays(threshold)
-        let daysToThreshold = ageAtThreshold.map { max(0, $0 - latest.ageDays) }
-        let projectedDate: Date? = {
-            guard let anchorDate, let ageAtThreshold else { return nil }
-            return anchorDate.addingTimeInterval(ageAtThreshold * 86_400.0)
-        }()
+        // Date at which a given α reaches the threshold (anchored consistently per branch).
+        func eolDate(_ a: Double) -> Date {
+            let ageEol = pow(lossEol / a, 1 / z)
+            if firstUseDate != nil {
+                return anchor.addingTimeInterval(ageEol * Self.year)
+            } else {
+                let ageAt = pow(max(0, 1 - sohNow) / a, 1 / z)        // implied "now" for this α
+                let days = max(0, ageEol - ageAt)
+                return now.addingTimeInterval(days * Self.year)
+            }
+        }
+        let ageEol = pow(lossEol / alpha, 1 / z)
+        let daysTo = max(0, ageEol - ageNow) * 365.25
+        var rate = alpha * z * pow(ageNow, z - 1) * 100   // %/yr local slope
+        rate = min(rate, 25)
 
         return WearProjection(
-            modelName: best.name,
-            sampleCount: points.count,
-            currentHealthPercent: latest.healthPercent,
-            wearPercent: 100 - latest.healthPercent,
-            ratePerDay: rate,
+            chemistry: chemistry,
+            currentHealthPercent: sohNow * 100,
+            wearPercent: (1 - sohNow) * 100,
+            ratePerYearPercent: rate,
             threshold: threshold,
-            projectedDateToThreshold: projectedDate,
-            daysToThreshold: daysToThreshold,
-            r2: points.count > 1 ? best.r2 : nil,
-            confidence: Self.confidence(count: points.count,
-                                        spanDays: (points.last?.ageDays ?? 0) - (points.first?.ageDays ?? 0),
-                                        r2: best.r2)
+            daysToThreshold: daysTo,
+            projectedDate: eolDate(alpha),
+            projectedDateEarly: eolDate(range.upperBound),
+            projectedDateLate: eolDate(range.lowerBound),
+            basis: basis,
+            confidence: confidence,
+            sampleCount: n,
+            curveAnchor: anchor,
+            curveAlpha: alpha,
+            curveZ: z
         )
-    }
-
-    static func confidence(count: Int, spanDays: Double, r2: Double) -> WearProjection.Confidence {
-        if count <= 1 || spanDays < 7 { return .low }
-        if count >= 4 && spanDays >= 30 && r2 >= 0.8 { return .high }
-        return .medium
     }
 }
