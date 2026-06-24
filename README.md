@@ -1,14 +1,22 @@
 # Battery Monitor
 
+![platform: macOS 14+](https://img.shields.io/badge/platform-macOS%2014%2B-blue)
+![Swift 5.9](https://img.shields.io/badge/Swift-5.9-orange)
+![license: MIT](https://img.shields.io/badge/license-MIT-green)
+
 A native macOS app that reads **Android phone battery health over ADB**, stores a local
-history, and **projects battery wear** — refining the estimate as you take more readings.
+history, **projects battery wear**, and exports a **customer-ready PDF report**.
 
 It exists because many phones (e.g. the Samsung Galaxy S25 in several regions) **hide the
 battery-health screen**, even though the data is sitting right there in `dumpsys battery`.
 Plug the phone into a Mac and Battery Monitor surfaces it.
 
-> Verified on a Galaxy S25 (SM-S931B): ASOC health, BSOH, first-use date, and cell
-> manufacture date are all read without root. See [`docs/samsung-battery-health-adb.md`](docs/samsung-battery-health-adb.md).
+| App | Customer report |
+|---|---|
+| ![Battery Monitor](docs/screenshots/app-main.png) | ![PDF report](docs/screenshots/report.png) |
+
+> Verified without root on a Galaxy S25 (SM-S931B) and a Poco F3 (M2012K11AG).
+> See [`docs/samsung-battery-health-adb.md`](docs/samsung-battery-health-adb.md).
 
 ## Features
 
@@ -24,9 +32,11 @@ Plug the phone into a Mac and Battery Monitor surfaces it.
 - **Wear projection** — estimates the date your battery reaches an end-of-life threshold
   (default 80%). Works from a **single measurement** and gets more accurate, with a
   tightening confidence band, as measurements accumulate.
+- **Customer PDF report** — one-page battery-health report (verdict, wear, capacity,
+  projection, chart) with your shop name, ready to hand a customer.
 - **Export / Import** — portable, versioned JSON. Move data between Macs or archive it.
-- **Extensible** — adding a new phone family (e.g. Poco F3) is one `BatteryProbe`
-  conformer registered in `DeviceRegistry`; nothing else changes.
+- **Extensible** — adding a new phone family is one `BatteryProbe` conformer registered in
+  `DeviceRegistry`; nothing else changes. Ships with Samsung + Xiaomi/Poco probes.
 
 ## Supported devices
 
