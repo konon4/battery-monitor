@@ -13,6 +13,9 @@ struct BatteryMonitorApp: App {
         if CommandLine.arguments.contains("--selftest") {
             SelfTest.run()   // exits the process
         }
+        if CommandLine.arguments.contains("--report-test") {
+            ReportSelfTest.run()   // exits the process
+        }
         do {
             container = try Self.makeContainer()
         } catch {
@@ -91,5 +94,35 @@ enum SelfTest {
             print("SELFTEST: ERROR \(error)")
             exit(2)
         }
+    }
+}
+
+/// Headless verification that the PDF report renders. `--report-test`.
+enum ReportSelfTest {
+    @MainActor
+    static func run() -> Never {
+        let id = DeviceIdentity(serial: "REPORT-TEST", model: "SM-S931B", codename: "pa1q", manufacturer: "samsung")
+        let firstUse = Date().addingTimeInterval(-300 * 86_400)
+        let profile = DeviceProfile(identity: id, firstUseDate: firstUse)
+        let samples = [
+            BatterySample(deviceSerial: id.serial, timestamp: Date().addingTimeInterval(-90 * 86_400),
+                          levelPercent: 80, healthPercent: 98, estimatedFullCapacityMAh: 3920),
+            BatterySample(deviceSerial: id.serial, timestamp: Date(),
+                          levelPercent: 66, voltage: 4.11, temperatureC: 30, healthPercent: 96,
+                          bsoh: 100, estimatedFullCapacityMAh: 3840),
+        ]
+        let points = WearEstimator.points(from: samples, firstUseDate: firstUse)
+        let projection = WearEstimator().project(points: points, anchorDate: firstUse)
+        let data = BatteryReportData(profile: profile, sample: samples[1], projection: projection,
+                                     samples: samples, shopName: "Kardan Repair",
+                                     threshold: 80, generatedAt: Date())
+        guard let pdf = ReportRenderer.pdf(BatteryReportView(data: data)) else {
+            print("REPORT-TEST: FAIL (nil pdf)"); exit(1)
+        }
+        let isPDF = pdf.starts(with: Array("%PDF".utf8))
+        let url = URL.temporaryDirectory.appendingPathComponent("battery-report-test.pdf")
+        try? pdf.write(to: url)
+        print("REPORT-TEST: \(isPDF && pdf.count > 1000 ? "PASS" : "FAIL") bytes=\(pdf.count) → \(url.path)")
+        exit(isPDF && pdf.count > 1000 ? 0 : 1)
     }
 }

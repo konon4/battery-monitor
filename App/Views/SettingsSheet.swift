@@ -21,6 +21,12 @@ struct SettingsSheet: View {
                     }
                 }
 
+                Section("Customer report") {
+                    TextField("Shop name", text: $model.shopName, prompt: Text("e.g. Kardan Repair"))
+                    Text("Printed as the header on the exported PDF battery report.")
+                        .font(.caption).foregroundStyle(.secondary)
+                }
+
                 Section("Wear model") {
                     Stepper(value: $model.wearThreshold, in: 50...95, step: 1) {
                         Text("End-of-life threshold: \(Int(model.wearThreshold))% health")

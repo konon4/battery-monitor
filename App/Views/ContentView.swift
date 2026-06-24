@@ -15,12 +15,27 @@ struct JSONFile: FileDocument {
     }
 }
 
+/// PDF wrapper for the customer report exporter.
+struct PDFFile: FileDocument {
+    static var readableContentTypes: [UTType] { [.pdf] }
+    var data: Data
+    init(data: Data) { self.data = data }
+    init(configuration: ReadConfiguration) throws {
+        data = configuration.file.regularFileContents ?? Data()
+    }
+    func fileWrapper(configuration: WriteConfiguration) throws -> FileWrapper {
+        FileWrapper(regularFileWithContents: data)
+    }
+}
+
 struct ContentView: View {
     @Environment(AppModel.self) private var model
     @State private var showExporter = false
     @State private var showImporter = false
     @State private var exportFile = JSONFile(data: Data())
     @State private var showSettings = false
+    @State private var showReportExporter = false
+    @State private var reportFile = PDFFile(data: Data())
 
     var body: some View {
         @Bindable var model = model
@@ -53,6 +68,8 @@ struct ContentView: View {
                 } label: { Label("Capture", systemImage: "arrow.clockwise") }
                 .disabled(model.selectedSerial == nil || model.isBusy)
 
+                Button { buildReport() } label: { Label("Report", systemImage: "doc.richtext") }
+                    .disabled(!model.selectedHasHistory)
                 Button { startExport() } label: { Label("Export", systemImage: "square.and.arrow.up") }
                 Button { showImporter = true } label: { Label("Import", systemImage: "square.and.arrow.down") }
                 Button { showSettings = true } label: { Label("Settings", systemImage: "gearshape") }
@@ -65,6 +82,8 @@ struct ContentView: View {
         .fileImporter(isPresented: $showImporter, allowedContentTypes: [.json]) { result in
             if case .success(let url) = result { importFrom(url) }
         }
+        .fileExporter(isPresented: $showReportExporter, document: reportFile,
+                      contentType: .pdf, defaultFilename: reportFilename) { _ in }
         .safeAreaInset(edge: .bottom) { StatusBar() }
     }
 
@@ -79,6 +98,25 @@ struct ContentView: View {
         guard let data = model.exportData() else { return }
         exportFile = JSONFile(data: data)
         showExporter = true
+    }
+
+    private var reportFilename: String {
+        let name = (model.selectedProfile?.label ?? "device")
+            .replacingOccurrences(of: " ", with: "-")
+        return "battery-report-\(name).pdf"
+    }
+
+    private func buildReport() {
+        guard let profile = model.selectedProfile, let sample = model.latestSample else { return }
+        let data = BatteryReportData(
+            profile: profile, sample: sample, projection: model.projection,
+            samples: model.samples, shopName: model.shopName,
+            threshold: model.wearThreshold, generatedAt: Date())
+        guard let pdf = ReportRenderer.pdf(BatteryReportView(data: data)) else {
+            model.errorMessage = "Could not generate the report."; return
+        }
+        reportFile = PDFFile(data: pdf)
+        showReportExporter = true
     }
 
     private func importFrom(_ url: URL) {

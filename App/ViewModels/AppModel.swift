@@ -34,7 +34,16 @@ final class AppModel {
         }
     }
 
-    private enum Keys { static let adbPath = "customAdbPath"; static let threshold = "wearThreshold" }
+    /// Shop name printed on the customer PDF report (branding).
+    var shopName: String {
+        didSet { UserDefaults.standard.set(shopName, forKey: Keys.shopName) }
+    }
+
+    private enum Keys {
+        static let adbPath = "customAdbPath"
+        static let threshold = "wearThreshold"
+        static let shopName = "shopName"
+    }
     private let autoCaptureWindow: TimeInterval = 30 * 60   // de-dup auto captures within 30 min
 
     private var adb: ADBClient?
@@ -48,6 +57,7 @@ final class AppModel {
         self.customAdbPath = UserDefaults.standard.string(forKey: Keys.adbPath)
         let stored = UserDefaults.standard.double(forKey: Keys.threshold)
         self.wearThreshold = stored == 0 ? 80 : stored
+        self.shopName = UserDefaults.standard.string(forKey: Keys.shopName) ?? ""
 
         locateADB()
         loadProfiles()
