@@ -1,8 +1,20 @@
-# Battery Monitor 1.0
+# Battery Monitor 1.2.0
 
 A native macOS app that reads **Android phone battery health over ADB**, stores a local
 history, projects battery wear, and exports a customer-ready PDF report — useful when the
 phone's own battery-health screen is region-locked (e.g. Galaxy S25).
+
+## What's new in 1.2.0
+- **Health-source provenance** — every reading now records *how* health was measured
+  (Samsung ASOC · sysfs `charge_full` · batterystats learned capacity), so history stays
+  interpretable across devices and app versions. Recorded in the local store and in
+  JSON exports; older exports still import cleanly.
+- **Method-aware health label** — the "Health (ASOC)" label is now driven by the sample's
+  recorded source, not guessed from the manufacturer.
+- **Import fixes** — export/import now uses a single, fully tested merge path
+  (duplicate samples deduped by device + timestamp).
+- Internal: probe parsers share one set of unit conversions; release script gained an
+  opt-in Developer ID + notarization path.
 
 ## Highlights
 - **Live readout** — charge level, health % (Samsung ASOC), estimated mAh vs. design, BSOH, temperature, voltage.
@@ -22,10 +34,10 @@ phone's own battery-health screen is region-locked (e.g. Galaxy S25).
 
 ## Install
 1. Requires macOS 14+ and `adb` (`brew install android-platform-tools`).
-2. Download `BatteryMonitor-1.0.dmg`, open it, drag **Battery Monitor** to Applications.
+2. Download `BatteryMonitor-1.2.0.dmg`, open it, drag **Battery Monitor** to Applications.
 
-> **Gatekeeper:** this build is ad-hoc signed, not notarized with a paid Apple Developer ID. On first
-> launch macOS will warn — open it once via **right-click → Open**, or run
+> **Gatekeeper:** if this build is ad-hoc signed (not notarized), macOS will warn on first
+> launch — open it once via **right-click → Open**, or run
 > `xattr -dr com.apple.quarantine /Applications/BatteryMonitor.app`.
 
 ## Enable USB debugging on the phone
