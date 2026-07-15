@@ -37,9 +37,15 @@ struct HealthSummary: View {
         profile?.designCapacityMAh.map { "of \($0) mAh when new" } ?? "estimated"
     }
 
-    // ASOC is a Samsung-specific metric; other vendors derive health from capacity ÷ design.
+    // Named after how the sample was actually measured: ASOC is the Samsung fuel gauge's
+    // own figure; other sources derive health from capacity ÷ design. Samples captured
+    // before `healthSource` existed fall back to inferring from the manufacturer.
     private var healthTitle: String {
-        (profile?.identity.isSamsung ?? false) ? "Health (ASOC)" : "Health"
+        switch sample?.healthSource {
+        case .samsungASOC: return "Health (ASOC)"
+        case .sysfsChargeFull, .batterystatsLearned, .derived: return "Health"
+        case nil: return (profile?.identity.isSamsung ?? false) ? "Health (ASOC)" : "Health"
+        }
     }
 
     private var healthExtras: [(String, String, String)] {

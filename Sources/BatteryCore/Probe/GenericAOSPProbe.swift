@@ -15,6 +15,7 @@ public struct GenericAOSPProbe: BatteryProbe {
         let live = LiveBatteryFields(DumpsysScanner(try await runner.shell(serial: id.serial, "dumpsys battery")))
 
         var health: Double?
+        var healthSource: HealthSource?
         var estFull: Double?
         var designMAh: Int? = DesignCapacityCatalog.capacity(forModel: id.model)
         var cycleCount: Int?
@@ -26,6 +27,7 @@ public struct GenericAOSPProbe: BatteryProbe {
 
         if let full, let fullDesign, fullDesign > 0 {
             health = Double(full) / Double(fullDesign) * 100.0
+            healthSource = .sysfsChargeFull
             estFull = Double(full) / 1000.0                 // µAh -> mAh
             designMAh = Int((Double(fullDesign) / 1000.0).rounded())
         } else {
@@ -35,6 +37,7 @@ public struct GenericAOSPProbe: BatteryProbe {
                 estFull = Double(learned)
                 if let design = designMAh, design > 0 {
                     health = min(100, Double(learned) / Double(design) * 100.0)
+                    healthSource = .batterystatsLearned
                 }
             }
         }
@@ -48,6 +51,7 @@ public struct GenericAOSPProbe: BatteryProbe {
             chargeCounterMAh: live.chargeCounterMAh,
             currentNowMA: live.currentNowMA,
             healthPercent: health,
+            healthSource: healthSource,
             bsoh: nil,
             cycleCount: cycleCount,
             estimatedFullCapacityMAh: estFull

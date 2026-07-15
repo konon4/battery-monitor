@@ -1,5 +1,17 @@
 import Foundation
 
+/// The on-device source a probe used to obtain ``BatterySample/healthPercent``.
+///
+/// Recorded at capture (and exported) because the sources differ in nature: ASOC is the
+/// fuel gauge's own wear figure, while the capacity ratios are estimates whose
+/// denominator comes from ``DesignCapacityCatalog`` or sysfs.
+public enum HealthSource: String, Codable, Sendable, Hashable {
+    case samsungASOC           // Samsung mSavedBatteryAsoc — direct, granular
+    case sysfsChargeFull       // sysfs charge_full ÷ charge_full_design
+    case batterystatsLearned   // batterystats learned capacity ÷ catalog design
+    case derived               // computed downstream (no probe emits this yet)
+}
+
 /// A single point-in-time battery reading for a device.
 ///
 /// This is the core record persisted into history, exported, and fed to the wear models.
@@ -24,6 +36,9 @@ public struct BatterySample: Hashable, Codable, Sendable, Identifiable {
     /// that actually degrades (96 = ~4% wear). For generic devices this is derived from
     /// `charge_full / charge_full_design`.
     public let healthPercent: Double?
+    /// How ``healthPercent`` was read off the device. `nil` on samples captured before
+    /// this field existed (display falls back to inferring from the manufacturer).
+    public let healthSource: HealthSource?
     /// Samsung BSOH — coarse Good/Normal/Service bucket (e.g. 100.00). Secondary signal.
     public let bsoh: Double?
     /// Charge cycle count, when the device exposes it (S25 does not over ADB).
@@ -42,6 +57,7 @@ public struct BatterySample: Hashable, Codable, Sendable, Identifiable {
         chargeCounterMAh: Double? = nil,
         currentNowMA: Double? = nil,
         healthPercent: Double? = nil,
+        healthSource: HealthSource? = nil,
         bsoh: Double? = nil,
         cycleCount: Int? = nil,
         estimatedFullCapacityMAh: Double? = nil
@@ -55,6 +71,7 @@ public struct BatterySample: Hashable, Codable, Sendable, Identifiable {
         self.chargeCounterMAh = chargeCounterMAh
         self.currentNowMA = currentNowMA
         self.healthPercent = healthPercent
+        self.healthSource = healthSource
         self.bsoh = bsoh
         self.cycleCount = cycleCount
         self.estimatedFullCapacityMAh = estimatedFullCapacityMAh

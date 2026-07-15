@@ -21,12 +21,7 @@ public struct SamsungProbe: BatteryProbe {
     /// Pure parser — the unit-tested heart of the probe.
     static func parse(_ dump: String, identity id: DeviceIdentity, now: Date) -> ProbeResult {
         let s = DumpsysScanner(dump)
-
-        let level = s.int("level") ?? 0
-        let voltage = s.double("voltage").map { $0 / 1000.0 }            // mV -> V
-        let temperature = s.double("temperature").map { $0 / 10.0 }      // 0.1°C -> °C
-        let chargeCounter = s.double("Charge counter").map { $0 / 1000.0 } // µAh -> mAh
-        let currentNow = s.double("current now").map { $0 / 1000.0 }     // µA -> mA
+        let live = LiveBatteryFields(s)
 
         let asoc = s.double("mSavedBatteryAsoc")
         let bsoh = s.double("mSavedBatteryBsoh")
@@ -42,12 +37,13 @@ public struct SamsungProbe: BatteryProbe {
         let sample = BatterySample(
             deviceSerial: id.serial,
             timestamp: now,
-            levelPercent: level,
-            voltage: voltage,
-            temperatureC: temperature,
-            chargeCounterMAh: chargeCounter,
-            currentNowMA: currentNow,
+            levelPercent: live.level,
+            voltage: live.voltage,
+            temperatureC: live.temperatureC,
+            chargeCounterMAh: live.chargeCounterMAh,
+            currentNowMA: live.currentNowMA,
             healthPercent: asoc,
+            healthSource: asoc.map { _ in .samsungASOC },
             bsoh: bsoh,
             cycleCount: nil,   // S25 reports cycle_count: 0 over ADB — not trustworthy, omit.
             estimatedFullCapacityMAh: estFull

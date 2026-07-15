@@ -22,7 +22,7 @@ struct SettingsSheet: View {
                 }
 
                 Section("Customer report") {
-                    TextField("Shop name", text: $model.shopName, prompt: Text("e.g. Kardan Repair"))
+                    TextField("Shop name", text: $model.shopName, prompt: Text("e.g. My Repair Shop"))
                     Text("Printed as the header on the exported PDF battery report.")
                         .font(.caption).foregroundStyle(.secondary)
                 }

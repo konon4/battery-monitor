@@ -24,6 +24,7 @@ final class XiaomiProbeTests: XCTestCase {
         // learned 4132 mAh of 4520 design → ~91.4% health
         XCTAssertEqual(s.estimatedFullCapacityMAh!, 4132, accuracy: 1e-6)
         XCTAssertEqual(s.healthPercent!, 4132.0 / 4520.0 * 100, accuracy: 1e-6)
+        XCTAssertEqual(s.healthSource, .batterystatsLearned)
         XCTAssertEqual(result.designCapacityMAh, 4520)
         // live fields from dumpsys battery
         XCTAssertEqual(s.levelPercent, 59)
@@ -49,5 +50,27 @@ final class XiaomiProbeTests: XCTestCase {
         ])
         let result = try await GenericAOSPProbe().read(pixel, via: runner, now: date(2026, 6, 8))
         XCTAssertEqual(result.sample.estimatedFullCapacityMAh!, 4500, accuracy: 1e-6)
+        // Pixel 8 is not in the capacity catalog → no denominator → no health, no source.
+        XCTAssertNil(result.sample.healthPercent)
+        XCTAssertNil(result.sample.healthSource)
+    }
+
+    func testGenericProbeUsesSysfsWhenReadable() async throws {
+        let pixel = DeviceIdentity(serial: "p", model: "Pixel 8", codename: "shiba", manufacturer: "Google")
+        let battery = try Fixture.text("poco_f3_dumpsys", ext: "txt")
+        let runner = FakeShellRunner(responses: [
+            "dumpsys battery": battery,
+            "charge_full_design": "4500000",   // µAh; longest needle wins over "charge_full"
+            "charge_full": "4050000",
+            "cycle_count": "312",
+        ])
+        let result = try await GenericAOSPProbe().read(pixel, via: runner, now: date(2026, 6, 8))
+        let s = result.sample
+
+        XCTAssertEqual(s.healthPercent!, 90.0, accuracy: 1e-6)   // 4050 / 4500
+        XCTAssertEqual(s.healthSource, .sysfsChargeFull)
+        XCTAssertEqual(s.estimatedFullCapacityMAh!, 4050, accuracy: 1e-6)
+        XCTAssertEqual(s.cycleCount, 312)
+        XCTAssertEqual(result.designCapacityMAh, 4500)
     }
 }

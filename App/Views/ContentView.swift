@@ -122,7 +122,7 @@ struct ContentView: View {
     private func importFrom(_ url: URL) {
         let needsAccess = url.startAccessingSecurityScopedResource()
         defer { if needsAccess { url.stopAccessingSecurityScopedResource() } }
-        if let data = try? Data(contentsOf: url) { model.importData(data) }
+        if let data = try? Data(contentsOf: url) { Task { await model.importData(data) } }
     }
 }
 

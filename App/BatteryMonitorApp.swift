@@ -79,6 +79,7 @@ enum SelfTest {
             try repo.upsert(profile: DeviceProfile(identity: id, firstUseDate: Date()))
             try repo.add(sample: BatterySample(deviceSerial: "SELFTEST1", timestamp: Date(),
                                                levelPercent: 66, healthPercent: 96,
+                                               healthSource: .samsungASOC,
                                                estimatedFullCapacityMAh: 3840))
             try repo.add(sample: BatterySample(deviceSerial: "SELFTEST1", timestamp: Date().addingTimeInterval(60),
                                                levelPercent: 70, healthPercent: 96))
@@ -87,10 +88,11 @@ enum SelfTest {
             let samples = try repo.samples(forDevice: "SELFTEST1")
             let dup = try repo.hasSample(forDevice: "SELFTEST1", near: samples[0].timestamp, window: 5)
 
-            print("SELFTEST profiles=\(profiles.count) samples=\(samples.count) dedupHit=\(dup)")
+            let sourceOK = samples.first?.healthSource == .samsungASOC && samples.last?.healthSource == nil
+            print("SELFTEST profiles=\(profiles.count) samples=\(samples.count) dedupHit=\(dup) healthSourceRoundTrip=\(sourceOK)")
             try? FileManager.default.removeItem(at: tmp)
 
-            let ok = profiles.count == 1 && samples.count == 2 && dup == true
+            let ok = profiles.count == 1 && samples.count == 2 && dup == true && sourceOK
             print(ok ? "SELFTEST: PASS" : "SELFTEST: FAIL")
             exit(ok ? 0 : 1)
         } catch {
@@ -155,7 +157,7 @@ enum ReportSelfTest {
         let projection = WearEstimator().project(samples: samples, firstUseDate: firstUse,
                                                  chemistry: .graphite, now: Date())
         let data = BatteryReportData(profile: profile, sample: samples[1], projection: projection,
-                                     samples: samples, shopName: "Kardan Repair",
+                                     samples: samples, shopName: "Demo Service Center",
                                      threshold: 80, generatedAt: Date())
         guard let pdf = ReportRenderer.pdf(BatteryReportView(data: data)) else {
             print("REPORT-TEST: FAIL (nil pdf)"); exit(1)

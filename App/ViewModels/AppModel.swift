@@ -222,10 +222,10 @@ final class AppModel {
                        exportedAt: Date())
     }
 
-    func importData(_ data: Data) {
+    func importData(_ data: Data) async {
         do {
             let doc = try ExportDocument.decode(data)
-            let result = try mergeSync(doc)
+            let result = try await doc.merge(into: repo)
             loadProfiles()
             if selectedSerial == nil { selectedSerial = profiles.first?.id }
             loadSelected()
@@ -234,26 +234,6 @@ final class AppModel {
         } catch {
             report(error)
         }
-    }
-
-    /// Synchronous merge against the main-actor repository (mirrors `ExportDocument.merge`).
-    private func mergeSync(_ doc: ExportDocument) throws -> MergeResult {
-        var result = MergeResult(devicesAdded: 0, samplesAdded: 0, samplesSkipped: 0)
-        let existing = Set(try repo.profiles().map(\.id))
-        for device in doc.devices {
-            if !existing.contains(device.id) { result.devicesAdded += 1 }
-            try repo.upsert(profile: device)
-        }
-        func key(_ s: String, _ t: Date) -> String { "\(s)|\(t.timeIntervalSince1970)" }
-        var seen = Set(try repo.allSamples().map { key($0.deviceSerial, $0.timestamp) })
-        for sample in doc.samples {
-            let k = key(sample.deviceSerial, sample.timestamp)
-            if seen.contains(k) { result.samplesSkipped += 1; continue }
-            seen.insert(k)
-            try repo.add(sample: sample)
-            result.samplesAdded += 1
-        }
-        return result
     }
 
     // MARK: Errors

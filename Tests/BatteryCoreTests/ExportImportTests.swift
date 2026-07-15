@@ -7,7 +7,8 @@ final class ExportImportTests: XCTestCase {
         let profile = DeviceProfile(identity: id, firstUseDate: date(2025, 8, 12))
         let samples = [
             BatterySample(deviceSerial: "A1", timestamp: date(2026, 1, 1), levelPercent: 80, healthPercent: 97),
-            BatterySample(deviceSerial: "A1", timestamp: date(2026, 6, 1), levelPercent: 66, healthPercent: 96),
+            BatterySample(deviceSerial: "A1", timestamp: date(2026, 6, 1), levelPercent: 66,
+                          healthPercent: 96, healthSource: .samsungASOC),
         ]
         return ExportDocument(devices: [profile], samples: samples, exportedAt: date(2026, 6, 8))
     }
@@ -36,6 +37,44 @@ final class ExportImportTests: XCTestCase {
 
         let stored = await repo.samples(forDevice: "A1")
         XCTAssertEqual(stored.count, 2)
+
+        // Partial overlap: one duplicate + one new sample → only the new one lands.
+        var doc = makeDoc()
+        doc.samples = [
+            doc.samples[1],
+            BatterySample(deviceSerial: "A1", timestamp: date(2026, 7, 1), levelPercent: 50, healthPercent: 95),
+        ]
+        let r3 = try await doc.merge(into: repo)
+        XCTAssertEqual(r3.samplesAdded, 1)
+        XCTAssertEqual(r3.samplesSkipped, 1)
+        let after = await repo.samples(forDevice: "A1")
+        XCTAssertEqual(after.count, 3)
+    }
+
+    /// Exports written before `healthSource` existed must still import (field decodes as nil).
+    func testDecodesLegacyExportWithoutHealthSource() throws {
+        let json = """
+        {
+          "schemaVersion": 1,
+          "exportedAt": "2026-06-08T00:00:00Z",
+          "devices": [{
+            "identity": {"serial": "A1", "model": "SM-S931B", "codename": "pa1q", "manufacturer": "samsung"},
+            "label": "SM-S931B"
+          }],
+          "samples": [{
+            "id": "00000000-0000-0000-0000-000000000001",
+            "deviceSerial": "A1",
+            "timestamp": "2026-06-01T00:00:00Z",
+            "levelPercent": 66,
+            "healthPercent": 96
+          }]
+        }
+        """
+        let doc = try ExportDocument.decode(Data(json.utf8))
+        XCTAssertEqual(doc.samples.count, 1)
+        XCTAssertEqual(doc.samples[0].healthPercent, 96)
+        XCTAssertNil(doc.samples[0].healthSource)
+        XCTAssertEqual(doc.devices[0].chemistry, .graphite)   // pre-chemistry exports default too
     }
 
     func testRejectsNewerSchema() throws {

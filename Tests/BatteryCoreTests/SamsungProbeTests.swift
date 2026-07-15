@@ -13,6 +13,7 @@ final class SamsungProbeTests: XCTestCase {
 
         XCTAssertEqual(s.levelPercent, 66)
         XCTAssertEqual(s.healthPercent, 96)                 // ASOC — the headline metric
+        XCTAssertEqual(s.healthSource, .samsungASOC)
         XCTAssertEqual(s.bsoh, 100.0)
         XCTAssertEqual(s.voltage!, 4.114, accuracy: 1e-6)   // 4114 mV
         XCTAssertEqual(s.temperatureC!, 37.7, accuracy: 1e-6) // 377 → 37.7°C

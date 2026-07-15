@@ -63,6 +63,8 @@ final class BatterySampleEntity {
     var chargeCounterMAh: Double?
     var currentNowMA: Double?
     var healthPercent: Double?
+    /// Raw value of `HealthSource`; optional so pre-existing stores migrate in place.
+    var healthSourceRaw: String?
     var bsoh: Double?
     var cycleCount: Int?
     var estimatedFullCapacityMAh: Double?
@@ -79,6 +81,7 @@ final class BatterySampleEntity {
         self.chargeCounterMAh = sample.chargeCounterMAh
         self.currentNowMA = sample.currentNowMA
         self.healthPercent = sample.healthPercent
+        self.healthSourceRaw = sample.healthSource?.rawValue
         self.bsoh = sample.bsoh
         self.cycleCount = sample.cycleCount
         self.estimatedFullCapacityMAh = sample.estimatedFullCapacityMAh
@@ -88,7 +91,9 @@ final class BatterySampleEntity {
         BatterySample(id: sampleID, deviceSerial: deviceSerial, timestamp: timestamp,
                       levelPercent: levelPercent, voltage: voltage, temperatureC: temperatureC,
                       chargeCounterMAh: chargeCounterMAh, currentNowMA: currentNowMA,
-                      healthPercent: healthPercent, bsoh: bsoh, cycleCount: cycleCount,
+                      healthPercent: healthPercent,
+                      healthSource: healthSourceRaw.flatMap(HealthSource.init(rawValue:)),
+                      bsoh: bsoh, cycleCount: cycleCount,
                       estimatedFullCapacityMAh: estimatedFullCapacityMAh)
     }
 }

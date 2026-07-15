@@ -35,6 +35,7 @@ public struct XiaomiProbe: BatteryProbe {
             chargeCounterMAh: live.chargeCounterMAh,
             currentNowMA: live.currentNowMA,
             healthPercent: health,
+            healthSource: health.map { _ in .batterystatsLearned },
             bsoh: nil,
             cycleCount: nil,
             estimatedFullCapacityMAh: learned.map(Double.init)
