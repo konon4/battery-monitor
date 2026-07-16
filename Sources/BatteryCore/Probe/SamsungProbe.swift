@@ -23,8 +23,10 @@ public struct SamsungProbe: BatteryProbe {
         let s = DumpsysScanner(dump)
         let live = LiveBatteryFields(s)
 
-        let asoc = s.double("mSavedBatteryAsoc")
-        let bsoh = s.double("mSavedBatteryBsoh")
+        // Exynos and some A/M-series firmwares report ASOC/BSOH as -1 ("not supported") —
+        // treat non-positive values as absent rather than storing a -1% health reading.
+        let asoc = s.double("mSavedBatteryAsoc").flatMap { $0 > 0 ? $0 : nil }
+        let bsoh = s.double("mSavedBatteryBsoh").flatMap { $0 > 0 ? $0 : nil }
         let firstUse = s.date_yyyyMMdd("battery FirstUseDate")
         let cellDate = s.date_yyyyMMdd("LLB CAL")
 

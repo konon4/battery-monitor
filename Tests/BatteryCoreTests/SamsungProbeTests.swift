@@ -47,6 +47,20 @@ final class SamsungProbeTests: XCTestCase {
         XCTAssertEqual(result.sample.healthPercent, 96)
     }
 
+    func testExynosAsocSentinelTreatedAsAbsent() throws {
+        // Exynos and some A/M-series report ASOC/BSOH as -1 ("not supported") — must not
+        // become a -1% health reading.
+        let dump = try Fixture.text("s25_dumpsys", ext: "txt")
+            .replacingOccurrences(of: "mSavedBatteryAsoc: [96]", with: "mSavedBatteryAsoc: [-1]")
+            .replacingOccurrences(of: "mSavedBatteryBsoh: 100.00", with: "mSavedBatteryBsoh: -1")
+        let s = SamsungProbe.parse(dump, identity: s25, now: date(2026, 6, 8)).sample
+        XCTAssertNil(s.healthPercent)
+        XCTAssertNil(s.healthSource)
+        XCTAssertNil(s.bsoh)
+        XCTAssertNil(s.estimatedFullCapacityMAh)
+        XCTAssertEqual(s.levelPercent, 66)   // live fields still parse
+    }
+
     func testUnknownVendorFallsBackToGeneric() {
         let pixel = DeviceIdentity(serial: "x", model: "Pixel 8", codename: "shiba", manufacturer: "Google")
         XCTAssertEqual(DeviceRegistry.standard.probe(for: pixel)?.name, "Generic Android (AOSP)")
