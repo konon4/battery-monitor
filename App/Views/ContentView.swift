@@ -110,6 +110,7 @@ struct ContentView: View {
         guard let profile = model.selectedProfile, let sample = model.latestSample else { return }
         let data = BatteryReportData(
             profile: profile, sample: sample, projection: model.projection,
+            cycles: model.cycleProjection,
             samples: model.samples, shopName: model.shopName,
             threshold: model.wearThreshold, generatedAt: Date())
         guard let pdf = ReportRenderer.pdf(BatteryReportView(data: data)) else {

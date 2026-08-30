@@ -27,6 +27,11 @@ public struct SamsungProbe: BatteryProbe {
         // treat non-positive values as absent rather than storing a -1% health reading.
         let asoc = s.double("mSavedBatteryAsoc").flatMap { $0 > 0 ? $0 : nil }
         let bsoh = s.double("mSavedBatteryBsoh").flatMap { $0 > 0 ? $0 : nil }
+        // Samsung accumulates discharged charge in EFS as percent-of-a-full-charge; One UI
+        // itself divides that by 100 to get the cycle count it publishes (the platform log
+        // shows `[setCycle]cycleStr:<n>` written to /sys/.../battery_cycle). The plain
+        // `cycle_count` field in the broadcast stays 0 on these devices and is ignored.
+        let cycles = s.double("mSavedBatteryUsage").flatMap { $0 > 0 ? Int($0 / 100) : nil }
         let firstUse = s.date_yyyyMMdd("battery FirstUseDate")
         let cellDate = s.date_yyyyMMdd("LLB CAL")
 
@@ -47,7 +52,7 @@ public struct SamsungProbe: BatteryProbe {
             healthPercent: asoc,
             healthSource: asoc.map { _ in .samsungASOC },
             bsoh: bsoh,
-            cycleCount: nil,   // S25 reports cycle_count: 0 over ADB — not trustworthy, omit.
+            cycleCount: cycles,
             estimatedFullCapacityMAh: estFull
         )
 

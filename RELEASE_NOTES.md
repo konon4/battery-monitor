@@ -1,10 +1,23 @@
-# Battery Monitor 1.2.0
+# Battery Monitor 1.3.0
 
 A native macOS app that reads **Android phone battery health over ADB**, stores a local
 history, projects battery wear, and exports a customer-ready PDF report — useful when the
 phone's own battery-health screen is region-locked (e.g. Galaxy S25).
 
-## What's new in 1.2.0
+## What's new in 1.3.0
+- **Charge cycles, and how many are left.** Samsung phones now report a real cycle count
+  over ADB — read from One UI's own accumulated-discharge counter, the same number the
+  (region-locked) Battery Information screen shows. The app projects how many cycles the
+  battery has left before it reaches the end-of-life threshold, with a usage rate
+  (cycles/day) and the calendar date that implies.
+- **Manual cycle entry** for phones that never expose a count over ADB (Xiaomi / Poco /
+  Redmi and most non-Samsung Android): dial `*#*#6485#*#*` on the phone and enter MB_07 in
+  Settings. Device-reported counts always win over a manual figure.
+- **Replaced batteries**: "First use date" is now "Battery in service since" — set it to
+  the date a replacement battery was fitted and both projections follow the new cell.
+- The customer report now prints cycles used, cycles left, and the typical rating.
+
+## What was new in 1.2.0
 - **Health-source provenance** — every reading now records *how* health was measured
   (Samsung ASOC · sysfs `charge_full` · batterystats learned capacity), so history stays
   interpretable across devices and app versions. Recorded in the local store and in
@@ -34,7 +47,7 @@ phone's own battery-health screen is region-locked (e.g. Galaxy S25).
 
 ## Install
 1. Requires macOS 14+ and `adb` (`brew install android-platform-tools`).
-2. Download `BatteryMonitor-1.2.0.dmg`, open it, drag **Battery Monitor** to Applications.
+2. Download `BatteryMonitor-1.3.0.dmg`, open it, drag **Battery Monitor** to Applications.
 
 > **Gatekeeper:** if this build is ad-hoc signed (not notarized), macOS will warn on first
 > launch — open it once via **right-click → Open**, or run

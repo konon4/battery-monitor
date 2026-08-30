@@ -152,11 +152,14 @@ enum ReportSelfTest {
                           levelPercent: 80, healthPercent: 98, estimatedFullCapacityMAh: 3920),
             BatterySample(deviceSerial: id.serial, timestamp: Date(),
                           levelPercent: 66, voltage: 4.11, temperatureC: 30, healthPercent: 96,
-                          bsoh: 100, estimatedFullCapacityMAh: 3840),
+                          bsoh: 100, cycleCount: 264, estimatedFullCapacityMAh: 3840),
         ]
         let projection = WearEstimator().project(samples: samples, firstUseDate: firstUse,
                                                  chemistry: .graphite, now: Date())
+        let cycles = CycleEstimator().project(samples: samples, chemistry: .graphite,
+                                              firstUseDate: firstUse, now: Date())
         let data = BatteryReportData(profile: profile, sample: samples[1], projection: projection,
+                                     cycles: cycles,
                                      samples: samples, shopName: "Demo Service Center",
                                      threshold: 80, generatedAt: Date())
         guard let pdf = ReportRenderer.pdf(BatteryReportView(data: data)) else {

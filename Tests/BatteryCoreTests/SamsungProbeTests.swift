@@ -18,7 +18,9 @@ final class SamsungProbeTests: XCTestCase {
         XCTAssertEqual(s.voltage!, 4.114, accuracy: 1e-6)   // 4114 mV
         XCTAssertEqual(s.temperatureC!, 37.7, accuracy: 1e-6) // 377 → 37.7°C
         XCTAssertEqual(s.chargeCounterMAh!, 2719.85, accuracy: 1e-6)
-        XCTAssertNil(s.cycleCount)                           // not trusted over ADB on S25
+        // Cycle count is derived from Samsung's accumulated-discharge counter
+        // (mSavedBatteryUsage 25307 / 100), not the broadcast's always-zero cycle_count.
+        XCTAssertEqual(s.cycleCount, 253)
 
         // estimated full capacity = 96% × 4000 mAh design = 3840
         XCTAssertEqual(s.estimatedFullCapacityMAh!, 3840, accuracy: 1e-6)
@@ -59,6 +61,7 @@ final class SamsungProbeTests: XCTestCase {
         XCTAssertNil(s.bsoh)
         XCTAssertNil(s.estimatedFullCapacityMAh)
         XCTAssertEqual(s.levelPercent, 66)   // live fields still parse
+        XCTAssertEqual(s.cycleCount, 253)    // cycle counter is independent of ASOC
     }
 
     func testUnknownVendorFallsBackToGeneric() {

@@ -16,6 +16,10 @@ final class DeviceProfileEntity {
     var cellManufactureDate: Date?
     /// Raw value of `BatteryChemistry`; defaulted so SwiftData migrates older stores.
     var chemistryRaw: String = BatteryChemistry.graphite.rawValue
+    /// User-entered cycle count for devices that never report one over ADB; optional so
+    /// pre-existing stores migrate in place.
+    var manualCycleCount: Int?
+    var manualCycleCountDate: Date?
 
     @Relationship(deleteRule: .cascade, inverse: \BatterySampleEntity.device)
     var samples: [BatterySampleEntity] = []
@@ -30,6 +34,8 @@ final class DeviceProfileEntity {
         self.firstUseDate = profile.firstUseDate
         self.cellManufactureDate = profile.cellManufactureDate
         self.chemistryRaw = profile.chemistry.rawValue
+        self.manualCycleCount = profile.manualCycleCount
+        self.manualCycleCountDate = profile.manualCycleCountDate
     }
 
     func apply(_ profile: DeviceProfile) {
@@ -38,6 +44,8 @@ final class DeviceProfileEntity {
         firstUseDate = profile.firstUseDate
         cellManufactureDate = profile.cellManufactureDate
         chemistryRaw = profile.chemistry.rawValue
+        manualCycleCount = profile.manualCycleCount
+        manualCycleCountDate = profile.manualCycleCountDate
     }
 
     var identity: DeviceIdentity {
@@ -47,7 +55,9 @@ final class DeviceProfileEntity {
     var asProfile: DeviceProfile {
         DeviceProfile(identity: identity, label: label, designCapacityMAh: designCapacityMAh,
                       firstUseDate: firstUseDate, cellManufactureDate: cellManufactureDate,
-                      chemistry: BatteryChemistry(rawValue: chemistryRaw) ?? .graphite)
+                      chemistry: BatteryChemistry(rawValue: chemistryRaw) ?? .graphite,
+                      manualCycleCount: manualCycleCount,
+                      manualCycleCountDate: manualCycleCountDate)
     }
 }
 

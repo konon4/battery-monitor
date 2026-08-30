@@ -15,6 +15,12 @@ public struct DeviceProfile: Hashable, Codable, Sendable, Identifiable {
     public var cellManufactureDate: Date?
     /// Cell chemistry — drives the wear-projection curve. Defaults to standard Li-ion.
     public var chemistry: BatteryChemistry
+    /// Charge cycles entered by hand, for devices that never report them over ADB
+    /// (Xiaomi/MIUI and most non-Samsung Android) — read off the phone's own engineering
+    /// menu, e.g. `*#*#6485#*#*` → MB_07. Probe-read counts always take priority.
+    public var manualCycleCount: Int?
+    /// When ``manualCycleCount`` was entered, so a stale figure can be shown as such.
+    public var manualCycleCountDate: Date?
 
     public init(
         identity: DeviceIdentity,
@@ -22,7 +28,9 @@ public struct DeviceProfile: Hashable, Codable, Sendable, Identifiable {
         designCapacityMAh: Int? = nil,
         firstUseDate: Date? = nil,
         cellManufactureDate: Date? = nil,
-        chemistry: BatteryChemistry = .graphite
+        chemistry: BatteryChemistry = .graphite,
+        manualCycleCount: Int? = nil,
+        manualCycleCountDate: Date? = nil
     ) {
         self.identity = identity
         self.label = label ?? identity.model
@@ -30,6 +38,8 @@ public struct DeviceProfile: Hashable, Codable, Sendable, Identifiable {
         self.firstUseDate = firstUseDate
         self.cellManufactureDate = cellManufactureDate
         self.chemistry = chemistry
+        self.manualCycleCount = manualCycleCount
+        self.manualCycleCountDate = manualCycleCountDate
     }
 
     /// Name to show in the UI: the user's custom label if set, otherwise the consumer
@@ -41,6 +51,7 @@ public struct DeviceProfile: Hashable, Codable, Sendable, Identifiable {
 
     private enum CodingKeys: String, CodingKey {
         case identity, label, designCapacityMAh, firstUseDate, cellManufactureDate, chemistry
+        case manualCycleCount, manualCycleCountDate
     }
 
     // Custom decode so exports written before `chemistry` existed still import.
@@ -52,5 +63,7 @@ public struct DeviceProfile: Hashable, Codable, Sendable, Identifiable {
         firstUseDate = try c.decodeIfPresent(Date.self, forKey: .firstUseDate)
         cellManufactureDate = try c.decodeIfPresent(Date.self, forKey: .cellManufactureDate)
         chemistry = try c.decodeIfPresent(BatteryChemistry.self, forKey: .chemistry) ?? .graphite
+        manualCycleCount = try c.decodeIfPresent(Int.self, forKey: .manualCycleCount)
+        manualCycleCountDate = try c.decodeIfPresent(Date.self, forKey: .manualCycleCountDate)
     }
 }

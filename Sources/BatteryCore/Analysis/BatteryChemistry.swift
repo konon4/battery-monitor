@@ -43,6 +43,42 @@ public enum BatteryChemistry: String, Codable, Sendable, CaseIterable {
         }
     }
 
+    // MARK: - Cycle life
+
+    /// Typical charge cycles to the industry-standard 80 %-of-original end of life.
+    /// This is the figure phone makers publish (e.g. "80 % capacity after 800 cycles")
+    /// and the anchor for the cycle projection's prior.
+    public var ratedCycles: Int {
+        switch self {
+        case .graphite:      return 800
+        case .highVoltage:   return 600    // 4.4 V+ cells trade cycle life for energy
+        case .lfp:           return 2500   // conservative vs. the 3000+ often claimed
+        case .siliconCarbon: return 800    // vendors claim 1000+, little independent data
+        }
+    }
+
+    /// Plausible band of cycles-to-80 % (heavy … gentle use). Clamps the fitted rate so a
+    /// single early reading cannot extrapolate to an absurd cycle life.
+    public var ratedCyclesRange: ClosedRange<Int> {
+        switch self {
+        case .graphite:      return 500...1600
+        case .highVoltage:   return 400...1200
+        case .lfp:           return 1500...4000
+        case .siliconCarbon: return 400...1400
+        }
+    }
+
+    /// Exponent w in `loss(n) = beta * n^w` (n = equivalent full cycles). ~1 means the
+    /// published "linear to 80 %" convention; >1 leans to a late-life knee, <1 flattens.
+    public var cycleExponent: Double {
+        switch self {
+        case .graphite:      return 1.00
+        case .highVoltage:   return 1.05
+        case .lfp:           return 0.90
+        case .siliconCarbon: return 1.10
+        }
+    }
+
     public var label: String {
         switch self {
         case .graphite:      return "Li-ion / Li-poly (standard)"

@@ -74,10 +74,21 @@ private struct DeviceSettingsEditor: View {
             get: { profile.designCapacityMAh ?? 0 },
             set: { profile.designCapacityMAh = $0 == 0 ? nil : $0 }), format: .number)
             .onSubmit { onSave(profile) }
-        DatePicker("First use date",
+        DatePicker("Battery in service since",
                    selection: Binding(get: { profile.firstUseDate ?? Date() },
                                       set: { profile.firstUseDate = $0 }),
                    displayedComponents: .date)
+        Text("First use of the phone — or, if the battery has been replaced, the date it was fitted. Wear is projected from this date.")
+            .font(.caption).foregroundStyle(.secondary)
+        TextField("Charge cycles (manual)", value: Binding(
+            get: { profile.manualCycleCount ?? 0 },
+            set: {
+                profile.manualCycleCount = $0 == 0 ? nil : $0
+                profile.manualCycleCountDate = $0 == 0 ? nil : Date()
+            }), format: .number)
+            .onSubmit { onSave(profile) }
+        Text("Only for phones that do not report cycles over ADB (Xiaomi/Poco/Redmi and most non-Samsung Android). Read it on the phone: dial *#*#6485#*#* and use MB_07. Ignored when the device reports its own count.")
+            .font(.caption).foregroundStyle(.secondary)
         Picker("Cell chemistry", selection: $profile.chemistry) {
             ForEach(BatteryChemistry.allCases, id: \.self) { Text($0.label).tag($0) }
         }

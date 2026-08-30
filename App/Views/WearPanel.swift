@@ -4,6 +4,7 @@ import BatteryCore
 struct WearPanel: View {
     @Environment(AppModel.self) private var model
     let projection: WearProjection
+    var cycles: CycleProjection? = nil
 
     var body: some View {
         GroupBox {
@@ -29,6 +30,8 @@ struct WearPanel: View {
                            sub: rangeText)
                 }
 
+                if let cycles { cycleSection(cycles) }
+
                 HStack(spacing: 6) {
                     Text("Chemistry: \(projection.chemistry.shortLabel)")
                     Text("· \(basisText)")
@@ -51,6 +54,52 @@ struct WearPanel: View {
             }
             .padding(8)
         }
+    }
+
+    // MARK: Cycles
+
+    @ViewBuilder
+    private func cycleSection(_ c: CycleProjection) -> some View {
+        Divider()
+        VStack(alignment: .leading, spacing: 10) {
+            HStack {
+                Label("Charge cycles", systemImage: "arrow.triangle.2.circlepath")
+                    .font(.subheadline.weight(.semibold))
+                Spacer()
+                if c.cyclesAreManual {
+                    Text("entered manually")
+                        .font(.caption2)
+                        .padding(.horizontal, 6).padding(.vertical, 2)
+                        .background(.secondary.opacity(0.15), in: Capsule())
+                        .foregroundStyle(.secondary)
+                }
+            }
+
+            CycleLifeBar(used: c.lifeUsedFraction)
+
+            HStack(alignment: .top, spacing: 24) {
+                metric("Used", "\(c.cyclesNow)",
+                       sub: "of ~\(c.cyclesAtThreshold) to \(Int(c.threshold))%")
+                metric("Cycles left", "≈ \(c.cyclesRemaining)",
+                       sub: "range \(max(0, c.cyclesAtThresholdEarly - c.cyclesNow))–\(max(0, c.cyclesAtThresholdLate - c.cyclesNow))")
+                metric("Fading at", String(format: "≈ %.1f%%/100 cyc", c.lossPer100Cycles),
+                       sub: "rated ~\(c.ratedCycles) cycles")
+            }
+
+            if let perDay = c.cyclesPerDay {
+                Text(cycleRateText(c, perDay: perDay))
+                    .font(.caption).foregroundStyle(.secondary)
+            }
+        }
+    }
+
+    private func cycleRateText(_ c: CycleProjection, perDay: Double) -> String {
+        var s = String(format: "Using ≈ %.2f cycles/day (~%.0f/month)", perDay, perDay * 30.4)
+        if let date = c.projectedDate {
+            s += " → about \(Fmt.days(Double(c.cyclesRemaining) / max(perDay, 0.001)))"
+            s += " of use left, reaching \(Int(c.threshold))% around \(Fmt.date.string(from: date))."
+        }
+        return s
     }
 
     private var rangeText: String {
@@ -88,5 +137,31 @@ struct WearPanel: View {
             Text(sub).font(.caption2).foregroundStyle(.tertiary)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+    }
+}
+
+/// Horizontal "cycle life used" bar — the share of projected cycles already consumed.
+struct CycleLifeBar: View {
+    let used: Double   // 0…1
+
+    private var tint: Color {
+        switch used {
+        case ..<0.5:  return .green
+        case ..<0.8:  return .yellow
+        default:      return .orange
+        }
+    }
+
+    var body: some View {
+        GeometryReader { geo in
+            ZStack(alignment: .leading) {
+                Capsule().fill(.quaternary)
+                Capsule().fill(tint)
+                    .frame(width: max(4, geo.size.width * used))
+            }
+        }
+        .frame(height: 8)
+        .accessibilityLabel("Cycle life used")
+        .accessibilityValue("\(Int(used * 100)) percent")
     }
 }

@@ -22,7 +22,7 @@ struct DeviceDetailView: View {
                     HealthSummary(sample: model.latestSample, profile: model.selectedProfile)
                     // 2) Wear projection.
                     if let projection = model.projection {
-                        WearPanel(projection: projection)
+                        WearPanel(projection: projection, cycles: model.cycleProjection)
                     } else {
                         needsMoreDataPanel
                     }

@@ -15,6 +15,7 @@ final class AppModel {
     private(set) var profiles: [DeviceProfile] = [] // known/persisted devices
     private(set) var samples: [BatterySample] = []  // history for the selection
     private(set) var projection: WearProjection?
+    private(set) var cycleProjection: CycleProjection?
     var statusMessage: String?
     var errorMessage: String?
     private(set) var isBusy = false
@@ -191,16 +192,23 @@ final class AppModel {
     }
 
     private func loadSelected() {
-        guard let serial = selectedSerial else { samples = []; projection = nil; return }
+        guard let serial = selectedSerial else { samples = []; projection = nil; cycleProjection = nil; return }
         samples = (try? repo.samples(forDevice: serial)) ?? []
         recomputeProjection()
     }
 
     private func recomputeProjection() {
-        guard let profile = selectedProfile else { projection = nil; return }
+        guard let profile = selectedProfile else { projection = nil; cycleProjection = nil; return }
+        let now = Date()
         projection = WearEstimator(threshold: wearThreshold)
             .project(samples: samples, firstUseDate: profile.firstUseDate,
-                     chemistry: profile.chemistry, now: Date())
+                     chemistry: profile.chemistry, now: now)
+        let manual = profile.manualCycleCount.map {
+            CycleEstimator.ManualCycles(count: $0, recordedAt: profile.manualCycleCountDate ?? now)
+        }
+        cycleProjection = CycleEstimator(threshold: wearThreshold)
+            .project(samples: samples, chemistry: profile.chemistry, manualCycles: manual,
+                     firstUseDate: profile.firstUseDate, now: now)
     }
 
     func updateProfile(_ profile: DeviceProfile) {

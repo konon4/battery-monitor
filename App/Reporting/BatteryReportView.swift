@@ -7,6 +7,7 @@ struct BatteryReportData {
     let profile: DeviceProfile
     let sample: BatterySample
     let projection: WearProjection?
+    var cycles: CycleProjection? = nil
     let samples: [BatterySample]
     let shopName: String
     let threshold: Double
@@ -93,7 +94,7 @@ struct BatteryReportView: View {
     private var secondary: [(String, String)] {
         var out: [(String, String)] = []
         if let bsoh = data.sample.bsoh { out.append(("BSOH", String(format: "%.0f", bsoh))) }
-        if let c = data.sample.cycleCount { out.append(("Cycle count", "\(c)")) }
+        if let c = data.sample.cycleCount ?? data.cycles?.cyclesNow { out.append(("Charge cycles", "\(c)")) }
         if let f = data.profile.firstUseDate { out.append(("In service since", Fmt.date.string(from: f))) }
         if let cell = data.profile.cellManufactureDate { out.append(("Cell made", Fmt.date.string(from: cell))) }
         return out
@@ -123,6 +124,12 @@ struct BatteryReportView: View {
             if let early = p.projectedDateEarly, let late = p.projectedDateLate {
                 Text("Likely range: \(Fmt.date.string(from: early)) – \(Fmt.date.string(from: late))")
                     .font(.system(size: 11)).foregroundStyle(.secondary)
+            }
+            if let c = data.cycles {
+                Text("Charge cycles: \(c.cyclesNow) used, ≈ \(c.cyclesRemaining) left of about \(c.cyclesAtThreshold) "
+                     + "(typical rating ~\(c.ratedCycles))"
+                     + (c.cyclesAreManual ? " · count entered manually" : ""))
+                    .font(.system(size: 12))
             }
             Text("\(p.chemistry.shortLabel) aging model · \(p.confidence.label.lowercased()) confidence · \(p.sampleCount) reading(s)")
                 .font(.system(size: 10)).foregroundStyle(.secondary)
