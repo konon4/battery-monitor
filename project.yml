@@ -29,6 +29,10 @@ targets:
       properties:
         CFBundleName: Battery Monitor
         CFBundleDisplayName: Battery Monitor
+        # Without these the generated plist keeps XcodeGen's default 1.0 and every build
+        # ships claiming version 1.0 regardless of MARKETING_VERSION below.
+        CFBundleShortVersionString: "$(MARKETING_VERSION)"
+        CFBundleVersion: "$(CURRENT_PROJECT_VERSION)"
         LSMinimumSystemVersion: "14.0"
         # Set to true to make it a pure menu-bar agent (no Dock icon):
         LSUIElement: false
